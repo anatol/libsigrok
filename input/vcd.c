@@ -318,7 +318,7 @@ static int format_match(const char *filename)
 
 static int init(struct sr_input *in, const char *filename)
 {
-	struct sr_probe *probe;
+	struct sr_channel *probe;
 	int num_probes, i;
 	char name[SR_MAX_PROBENAME_LEN + 1];
 	char *param;
@@ -371,19 +371,19 @@ static int init(struct sr_input *in, const char *filename)
 	ctx->maxprobes = num_probes;
 
 	/* Create a virtual device. */
-	in->sdi = sr_dev_inst_new(0, SR_ST_ACTIVE, NULL, NULL, NULL);
+	in->sdi = sr_dev_inst_new(LOGIC, 0, SR_ST_ACTIVE, NULL, NULL, NULL);
 	in->internal = ctx;
 
 	for (i = 0; i < num_probes; i++) {
 		snprintf(name, SR_MAX_PROBENAME_LEN, "%d", i);
 		
-		if (!(probe = sr_probe_new(i, SR_PROBE_LOGIC, TRUE, name)))
+		if (!(probe = sr_channel_new(i, SR_CHANNEL_LOGIC, TRUE, name)))
 		{
 			release_context(ctx);
 			return SR_ERR;
 		}
 			
-		in->sdi->probes = g_slist_append(in->sdi->probes, probe);
+		in->sdi->channels = g_slist_append(in->sdi->channels, probe);
 	}
 
 	return SR_OK;

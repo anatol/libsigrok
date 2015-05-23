@@ -22,9 +22,9 @@
 noinst_LTLIBRARIES = libsigrok4DSLinput.la
 
 libsigrok4DSLinput_la_SOURCES = \
-        in_binary.c \
-        in_vcd.c \
-        in_wav.c \
+        binary.c \
+        vcd.c \
+        wav.c \
 	input.c 
 
 libsigrok4DSLinput_la_CFLAGS = \
