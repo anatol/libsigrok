@@ -2,7 +2,6 @@
 ## This file is part of the libsigrok project.
 ##
 ## Copyright (C) 2011 Uwe Hermann <uwe@hermann-uwe.de>
-## Copyright (C) 2012 Alexandru Gagniuc <mr.nuke.me@gmail.com>
 ##
 ## This program is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -18,20 +17,16 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-SUBDIRS = \
-	demo \
-	common \
-	DSL
 
-noinst_LTLIBRARIES = libsigrok4DSLhardware.la
+# Local lib, this is NOT meant to be installed!
+noinst_LTLIBRARIES = libsigrok4DSL_hw_dsl.la
 
-libsigrok4DSLhardware_la_SOURCES =
+libsigrok4DSL_hw_dsl_la_SOURCES = \
+	command.c \
+	dslogic.c \
+	dscope.c
 
-libsigrok4DSLhardware_la_LIBADD = 
+libsigrok4DSL_hw_dsl_la_CFLAGS = \
+	-I$(top_srcdir)
 
-if HW_DEMO
-libsigrok4DSLhardware_la_LIBADD += demo/libsigrok4DSL_hw_demo.la
-endif
 
-libsigrok4DSLhardware_la_LIBADD += common/libsigrok4DSL_hw_common.la
-libsigrok4DSLhardware_la_LIBADD += DSL/libsigrok4DSL_hw_dsl.la

@@ -1,7 +1,7 @@
 /*
  * This file is part of the libsigrok project.
  *
- * Copyright (C) 2010-2012 Bert Vermeulen <bert@biot.com>
+ * Copyright (C) 2013 Bert Vermeulen <bert@biot.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * Helper functions for the Cypress EZ-USB / FX2 series chips.
  */
 
-#include <libusb.h>
+//#include <libusb.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <stdio.h>
@@ -44,13 +44,13 @@ SR_PRIV int ezusb_reset(struct libusb_device_handle *hdl, int set_clear)
 	int ret;
 	unsigned char buf[1];
 
-	sr_info("setting CPU reset mode %s...",
+    sr_info("setting CPU reset mode %s...",
 		set_clear ? "on" : "off");
 	buf[0] = set_clear ? 1 : 0;
 	ret = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR, 0xa0,
-				      0xe600, 0x0000, buf, 1, 100);
+                      0xe600, 0x0000, buf, 1, 3000);
 	if (ret < 0)
-		sr_err("Unable to send control request: %s.",
+        sr_err("Unable to send control request: %s.",
 				libusb_error_name(ret));
 
 	return ret;
@@ -63,14 +63,14 @@ SR_PRIV int ezusb_install_firmware(libusb_device_handle *hdl,
 	int offset, chunksize, ret, result;
 	unsigned char buf[4096];
 
-	sr_info("Uploading firmware at %s", filename);
+    sr_info("Uploading firmware at %s", filename);
 	if ((fw = g_fopen(filename, "rb")) == NULL) {
-		sr_err("Unable to open firmware file %s for reading: %s",
+        sr_err("Unable to open firmware file %s for reading: %s",
 		       filename, strerror(errno));
-		return SR_ERR;
+        return SR_ERR;
 	}
 
-	result = SR_OK;
+    result = SR_OK;
 	offset = 0;
 	while (1) {
 		chunksize = fread(buf, 1, 4096, fw);
@@ -78,18 +78,18 @@ SR_PRIV int ezusb_install_firmware(libusb_device_handle *hdl,
 			break;
 		ret = libusb_control_transfer(hdl, LIBUSB_REQUEST_TYPE_VENDOR |
 					      LIBUSB_ENDPOINT_OUT, 0xa0, offset,
-					      0x0000, buf, chunksize, 100);
+                          0x0000, buf, chunksize, 3000);
 		if (ret < 0) {
-			sr_err("Unable to send firmware to device: %s.",
+            sr_err("Unable to send firmware to device: %s.",
 					libusb_error_name(ret));
-			result = SR_ERR;
+            result = SR_ERR;
 			break;
 		}
-		sr_info("Uploaded %d bytes", chunksize);
+        sr_info("Uploaded %d bytes", chunksize);
 		offset += chunksize;
 	}
 	fclose(fw);
-	sr_info("Firmware upload done");
+    sr_info("Firmware upload done");
 
 	return result;
 }
@@ -100,12 +100,12 @@ SR_PRIV int ezusb_upload_firmware(libusb_device *dev, int configuration,
 	struct libusb_device_handle *hdl;
 	int ret;
 
-	sr_info("uploading firmware to device on %d.%d",
+    sr_info("uploading firmware to device on %d.%d",
 		libusb_get_bus_number(dev), libusb_get_device_address(dev));
 
 	if ((ret = libusb_open(dev, &hdl)) < 0) {
-		sr_err("failed to open device: %s.", libusb_error_name(ret));
-		return SR_ERR;
+        sr_err("failed to open device: %s.", libusb_error_name(ret));
+        return SR_ERR;
 	}
 
 /*
@@ -115,29 +115,29 @@ SR_PRIV int ezusb_upload_firmware(libusb_device *dev, int configuration,
 #if !defined(__APPLE__)
 	if (libusb_kernel_driver_active(hdl, 0) == 1) {
 		if ((ret = libusb_detach_kernel_driver(hdl, 0)) < 0) {
-			sr_err("failed to detach kernel driver: %s",
+            sr_err("failed to detach kernel driver: %s",
 					libusb_error_name(ret));
-			return SR_ERR;
+            return SR_ERR;
 		}
 	}
 #endif
 
 	if ((ret = libusb_set_configuration(hdl, configuration)) < 0) {
-		sr_err("Unable to set configuration: %s",
+        sr_err("Unable to set configuration: %s",
 				libusb_error_name(ret));
-		return SR_ERR;
+        return SR_ERR;
 	}
 
 	if ((ezusb_reset(hdl, 1)) < 0)
-		return SR_ERR;
+        return SR_ERR;
 
 	if (ezusb_install_firmware(hdl, filename) < 0)
-		return SR_ERR;
+        return SR_ERR;
 
 	if ((ezusb_reset(hdl, 0)) < 0)
-		return SR_ERR;
+        return SR_ERR;
 
 	libusb_close(hdl);
 
-	return SR_OK;
+    return SR_OK;
 }

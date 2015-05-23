@@ -84,8 +84,9 @@ SR_API struct sr_session *sr_session_new(void)
 	}
 
 	session->source_timeout = -1;
+    session->running = FALSE;
 	session->abort_session = FALSE;
-	g_mutex_init(&session->stop_mutex);
+//	g_mutex_init(&session->stop_mutex);
 
 	return session;
 }
@@ -106,14 +107,54 @@ SR_API int sr_session_destroy(void)
 
 	sr_session_dev_remove_all();
 
+    sr_session_datafeed_callback_remove_all();
+
+    if (session->sources) {
+        g_free(session->sources);
+        session->sources = NULL;
+    }
+
+    if (session->pollfds) {
+        g_free(session->pollfds);
+        session->pollfds = NULL;
+    }
+
 	/* TODO: Error checks needed? */
 
-	g_mutex_clear(&session->stop_mutex);
+//	g_mutex_clear(&session->stop_mutex);
 
 	g_free(session);
 	session = NULL;
 
 	return SR_OK;
+}
+
+/**
+ * List all device instances attached to the current session.
+ *
+ * @param devlist A pointer where the device instance list will be
+ *                stored on return. If no devices are in the session,
+ *                this will be NULL. Each element in the list points
+ *                to a struct sr_dev_inst *.
+ *                The list must be freed by the caller, but not the
+ *                elements pointed to.
+ *
+ * @retval SR_OK Success.
+ * @retval SR_ERR Invalid argument.
+ *
+ * @since 0.3.0
+ */
+SR_API int sr_session_dev_list(GSList **devlist)
+{
+
+    *devlist = NULL;
+
+    if (!session)
+        return SR_ERR;
+
+    *devlist = g_slist_copy(session->devs);
+
+    return SR_OK;
 }
 
 /**
@@ -148,6 +189,7 @@ SR_API int sr_session_dev_remove_all(void)
  */
 SR_API int sr_session_dev_add(const struct sr_dev_inst *sdi)
 {
+        int ret;
 
 	if (!sdi) {
 		sr_err("%s: sdi was NULL", __func__);
@@ -175,6 +217,15 @@ SR_API int sr_session_dev_add(const struct sr_dev_inst *sdi)
 	}
 
 	session->devs = g_slist_append(session->devs, (gpointer)sdi);
+
+        if (session->running) {
+		/* Adding a device to a running session. Start acquisition
+		 * on that device now. */
+		if ((ret = sdi->driver->dev_acquisition_start(sdi,
+						(void *)sdi)) != SR_OK)
+			sr_err("Failed to start acquisition of device in "
+					"running session: %d", ret);
+	}
 
 	return SR_OK;
 }
@@ -232,41 +283,55 @@ SR_API int sr_session_datafeed_callback_add(sr_datafeed_callback_t cb, void *cb_
 	return SR_OK;
 }
 
-static int sr_session_run_poll(void)
+/**
+ * Call every device in the session's callback.
+ *
+ * For sessions not driven by select loops such as sr_session_run(),
+ * but driven by another scheduler, this can be used to poll the devices
+ * from within that scheduler.
+ *
+ * @param block If TRUE, this call will wait for any of the session's
+ *              sources to fire an event on the file descriptors, or
+ *              any of their timeouts to activate. In other words, this
+ *              can be used as a select loop.
+ *              If FALSE, all sources have their callback run, regardless
+ *              of file descriptor or timeout status.
+ *
+ * @return SR_OK upon success, SR_ERR on errors.
+ */
+static int sr_session_iteration(gboolean block)
 {
 	unsigned int i;
 	int ret;
 
-	while (session->num_sources > 0) {
-		ret = g_poll(session->pollfds, session->num_sources,
-				session->source_timeout);
-		for (i = 0; i < session->num_sources; i++) {
-			if (session->pollfds[i].revents > 0 || (ret == 0
-				&& session->source_timeout == session->sources[i].timeout)) {
-				/*
-				 * Invoke the source's callback on an event,
-				 * or if the poll timed out and this source
-				 * asked for that timeout.
-				 */
-				if (!session->sources[i].cb(session->pollfds[i].fd,
-						session->pollfds[i].revents,
-						session->sources[i].cb_data))
-					sr_session_source_remove(session->sources[i].poll_object);
-			}
+	ret = g_poll(session->pollfds, session->num_sources,
+			block ? session->source_timeout : 0);
+	for (i = 0; i < session->num_sources; i++) {
+		if (session->pollfds[i].revents > 0 || (ret == 0
+			&& session->source_timeout == session->sources[i].timeout)) {
 			/*
-			 * We want to take as little time as possible to stop
-			 * the session if we have been told to do so. Therefore,
-			 * we check the flag after processing every source, not
-			 * just once per main event loop.
+			 * Invoke the source's callback on an event,
+			 * or if the poll timed out and this source
+			 * asked for that timeout.
 			 */
-			g_mutex_lock(&session->stop_mutex);
-			if (session->abort_session) {
-				sr_session_stop_sync();
-				/* But once is enough. */
-				session->abort_session = FALSE;
-			}
-			g_mutex_unlock(&session->stop_mutex);
+			if (!session->sources[i].cb(session->pollfds[i].fd,
+					session->pollfds[i].revents,
+					session->sources[i].cb_data))
+				sr_session_source_remove(session->sources[i].poll_object);
 		}
+		/*
+		 * We want to take as little time as possible to stop
+		 * the session if we have been told to do so. Therefore,
+		 * we check the flag after processing every source, not
+		 * just once per main event loop.
+		 */
+		//g_mutex_lock(&session->stop_mutex);
+		if (session->abort_session) {
+			sr_session_stop_sync();
+			/* But once is enough. */
+			session->abort_session = FALSE;
+		}
+		//g_mutex_unlock(&session->stop_mutex);
 	}
 
 	return SR_OK;
@@ -297,14 +362,14 @@ SR_API int sr_session_start(void)
 		return SR_ERR_BUG;
 	}
 
-	sr_info("Starting.");
+	sr_info("Starting...");
 
 	ret = SR_OK;
 	for (l = session->devs; l; l = l->next) {
 		sdi = l->data;
 		if ((ret = sdi->driver->dev_acquisition_start(sdi, sdi)) != SR_OK) {
 			sr_err("%s: could not start an acquisition "
-			       "(%d)", __func__, ret);
+			       "(%d)", __func__, sr_strerror(ret));
 			break;
 		}
 	}
@@ -334,7 +399,9 @@ SR_API int sr_session_run(void)
 		return SR_ERR_BUG;
 	}
 
-	sr_info("Running.");
+    session->running = TRUE;
+
+	sr_info("Running...");
 
 	/* Do we have real sources? */
 	if (session->num_sources == 1 && session->pollfds[0].fd == -1) {
@@ -343,7 +410,8 @@ SR_API int sr_session_run(void)
 			session->sources[0].cb(-1, 0, session->sources[0].cb_data);
 	} else {
 		/* Real sources, use g_poll() main loop. */
-		sr_session_run_poll();
+    	while (session->num_sources)
+			sr_session_iteration(TRUE);
 	}
 
 	return SR_OK;
@@ -376,9 +444,10 @@ SR_PRIV int sr_session_stop_sync(void)
 		sdi = l->data;
 		if (sdi->driver) {
 			if (sdi->driver->dev_acquisition_stop)
-				sdi->driver->dev_acquisition_stop(sdi, sdi);
+                sdi->driver->dev_acquisition_stop(sdi, NULL);
 		}
 	}
+        session->running = FALSE;
 
 	return SR_OK;
 }
@@ -403,9 +472,9 @@ SR_API int sr_session_stop(void)
 		return SR_ERR_BUG;
 	}
 
-	g_mutex_lock(&session->stop_mutex);
+//	g_mutex_lock(&session->stop_mutex);
 	session->abort_session = TRUE;
-	g_mutex_unlock(&session->stop_mutex);
+//	g_mutex_unlock(&session->stop_mutex);
 
 	return SR_OK;
 }
@@ -417,8 +486,9 @@ SR_API int sr_session_stop(void)
  */
 static void datafeed_dump(const struct sr_datafeed_packet *packet)
 {
-	const struct sr_datafeed_logic *logic;
-	const struct sr_datafeed_analog *analog;
+    const struct sr_datafeed_logic *logic;
+    const struct sr_datafeed_dso *dso;
+    const struct sr_datafeed_analog *analog;
 
 	switch (packet->type) {
 	case SR_DF_HEADER:
@@ -435,7 +505,12 @@ static void datafeed_dump(const struct sr_datafeed_packet *packet)
 		sr_dbg("bus: Received SR_DF_LOGIC packet (%" PRIu64 " bytes).",
 		       logic->length);
 		break;
-	case SR_DF_ANALOG:
+    case SR_DF_DSO:
+        dso = packet->payload;
+        sr_dbg("bus: Received SR_DF_DSO packet (%d samples).",
+               dso->num_samples);
+        break;
+    case SR_DF_ANALOG:
 		analog = packet->payload;
 		sr_dbg("bus: Received SR_DF_ANALOG packet (%d samples).",
 		       analog->num_samples);
@@ -506,7 +581,7 @@ SR_PRIV int sr_session_send(const struct sr_dev_inst *sdi,
  *         SR_ERR_MALLOC upon memory allocation errors.
  */
 static int _sr_session_source_add(GPollFD *pollfd, int timeout,
-	sr_receive_data_callback_t cb, void *cb_data, gintptr poll_object)
+    sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi, gintptr poll_object)
 {
 	struct source *new_sources, *s;
 	GPollFD *new_pollfds;
@@ -536,7 +611,7 @@ static int _sr_session_source_add(GPollFD *pollfd, int timeout,
 	s = &new_sources[session->num_sources++];
 	s->timeout = timeout;
 	s->cb = cb;
-	s->cb_data = cb_data;
+	s->cb_data = sdi;
 	s->poll_object = poll_object;
 	session->pollfds = new_pollfds;
 	session->sources = new_sources;
@@ -561,14 +636,14 @@ static int _sr_session_source_add(GPollFD *pollfd, int timeout,
  *         SR_ERR_MALLOC upon memory allocation errors.
  */
 SR_API int sr_session_source_add(int fd, int events, int timeout,
-		sr_receive_data_callback_t cb, void *cb_data)
+		sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi)
 {
 	GPollFD p;
 
 	p.fd = fd;
 	p.events = events;
 
-	return _sr_session_source_add(&p, timeout, cb, cb_data, (gintptr)fd);
+    return _sr_session_source_add(&p, timeout, cb, sdi, (gintptr)fd);
 }
 
 /**
@@ -583,10 +658,10 @@ SR_API int sr_session_source_add(int fd, int events, int timeout,
  *         SR_ERR_MALLOC upon memory allocation errors.
  */
 SR_API int sr_session_source_add_pollfd(GPollFD *pollfd, int timeout,
-		sr_receive_data_callback_t cb, void *cb_data)
+		sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi)
 {
-	return _sr_session_source_add(pollfd, timeout, cb,
-				      cb_data, (gintptr)pollfd);
+    return _sr_session_source_add(pollfd, timeout, cb,
+                      sdi, (gintptr)pollfd);
 }
 
 /**
@@ -602,7 +677,7 @@ SR_API int sr_session_source_add_pollfd(GPollFD *pollfd, int timeout,
  *         SR_ERR_MALLOC upon memory allocation errors.
  */
 SR_API int sr_session_source_add_channel(GIOChannel *channel, int events,
-		int timeout, sr_receive_data_callback_t cb, void *cb_data)
+		int timeout, sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi)
 {
 	GPollFD p;
 
@@ -613,7 +688,7 @@ SR_API int sr_session_source_add_channel(GIOChannel *channel, int events,
 	p.events = events;
 #endif
 
-	return _sr_session_source_add(&p, timeout, cb, cb_data, (gintptr)channel);
+    return _sr_session_source_add(&p, timeout, cb, sdi, (gintptr)channel);
 }
 
 /**
