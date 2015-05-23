@@ -26,6 +26,15 @@
 #include <inttypes.h>
 #include <glib.h>
 
+#ifndef _WIN32
+#include <sys/time.h>
+#else
+#define WINVER 0x0501
+#define _WIN32_WINNT WINVER
+#include <Winsock2.h>
+#include <usbiodef.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -79,8 +88,6 @@ enum {
 	 */
 };
 
-#define SR_MAX_PROBENAME_LEN 32
-
 /* Handy little macros */
 #define SR_HZ(n)  (n)
 #define SR_KHZ(n) ((n) * (uint64_t)(1000ULL))
@@ -88,6 +95,21 @@ enum {
 #define SR_GHZ(n) ((n) * (uint64_t)(1000000000ULL))
 
 #define SR_HZ_TO_NS(n) ((uint64_t)(1000000000ULL) / (n))
+
+#define SR_B(n)  (n)
+#define SR_KB(n) ((n) * (uint64_t)(1024ULL))
+#define SR_MB(n) ((n) * (uint64_t)(1048576ULL))
+#define SR_GB(n) ((n) * (uint64_t)(1073741824ULL))
+
+#define SR_MAX_PROBENAME_LEN 32
+#define DS_MAX_ANALOG_PROBES_NUM 8
+#define DS_MAX_DSO_PROBES_NUM 2
+#define TriggerStages 16
+#define TriggerProbes 16
+#define TriggerCountBits 16
+
+#define DS_CONF_DSO_HDIVS 10
+#define DS_CONF_DSO_VDIVS 10
 
 /** libsigrok loglevels. */
 enum {
@@ -129,7 +151,7 @@ enum {
 #define SR_PRIV
 #endif
 
-typedef int (*sr_receive_data_callback_t)(int fd, int revents, void *cb_data);
+typedef int (*sr_receive_data_callback_t)(int fd, int revents, const struct sr_dev_inst *sdi);
 
 /** Data types used by sr_config_info(). */
 enum {
@@ -149,6 +171,7 @@ enum {
 	SR_DF_META,
 	SR_DF_TRIGGER,
 	SR_DF_LOGIC,
+	SR_DF_DSO,
 	SR_DF_ANALOG,
 	SR_DF_FRAME_BEGIN,
 	SR_DF_FRAME_END,
@@ -280,6 +303,26 @@ struct sr_datafeed_meta {
 struct sr_datafeed_logic {
 	uint64_t length;
 	uint16_t unitsize;
+	uint16_t data_error;
+	void *data;
+};
+
+struct sr_datafeed_trigger {
+
+};
+
+struct sr_datafeed_dso {
+	/** The probes for which data is included in this packet. */
+	GSList *probes;
+	int num_samples;
+	/** Measured quantity (voltage, current, temperature, and so on). */
+	int mq;
+	/** Unit in which the MQ is measured. */
+	int unit;
+	/** Bitmap with extra information about the MQ. */
+	uint64_t mqflags;
+	/** The analog value(s). The data is interleaved according to
+ 	 * the probes list. */
 	void *data;
 };
 
@@ -372,7 +415,7 @@ struct sr_output {
 	 * A pointer to this output format's 'struct sr_output_format'.
 	 * The frontend can use this to call the module's callbacks.
 	 */
-	struct sr_output_format *format;
+	struct sr_output_module *module;
 
 	/**
 	 * The device for which this output module is creating output. This
@@ -394,29 +437,57 @@ struct sr_output {
 	 * For example, the module might store a pointer to a chunk of output
 	 * there, and only flush it when it reaches a certain size.
 	 */
-	void *internal;
+	void *priv;
 };
 
-struct sr_output_format {
+/** Generic option struct used by various subsystems. */
+struct sr_option {
+	/* Short name suitable for commandline usage, [a-z0-9-]. */
+	char *id;
+	/* Short name suitable for GUI usage, can contain UTF-8. */
+	char *name;
+	/* Description of the option, in a sentence. */
+	char *desc;
+	/* Default value for this option. */
+	GVariant *def;
+	/* List of possible values, if this is an option with few values. */
+	GSList *values;
+};
+
+/** Output module driver. */
+struct sr_output_module {
 	/**
-	 * A unique ID for this output format. Must not be NULL.
-	 *
-	 * It can be used by frontends to select this output format for use.
-	 *
-	 * For example, calling sigrok-cli with <code>-O hex</code> will
-	 * select the hexadecimal text output format.
+	 * A unique ID for this output module, suitable for use in command-line
+	 * clients, [a-z0-9-]. Must not be NULL.
 	 */
 	char *id;
 
 	/**
-	 * A short description of the output format. Must not be NULL.
+	 * A unique name for this output module, suitable for use in GUI
+	 * clients, can contain UTF-8. Must not be NULL.
+	 */
+	const char *name;
+
+	/**
+	 * A short description of the output module. Must not be NULL.
 	 *
 	 * This can be displayed by frontends, e.g. when selecting the output
-	 * format for saving a file.
+	 * module for saving a file.
 	 */
-	char *description;
+	char *desc;
 
-	int df_type;
+	/**
+	 * A NULL terminated array of strings containing a list of file name
+	 * extensions typical for the input file format, or NULL if there is
+	 * no typical extension for this file format.
+	 */
+	const char *const *exts;
+
+	/**
+	 * Returns a NULL-terminated list of options this module can take.
+	 * Can be NULL, if the module has no options.
+	 */
+	const struct sr_option *(*options) (void);
 
 	/**
 	 * This function is called once, at the beginning of an output stream.
@@ -430,73 +501,10 @@ struct sr_output_format {
 	 *
 	 * @param o Pointer to the respective 'struct sr_output'.
 	 *
-	 * @return SR_OK upon success, a negative error code otherwise.
+	 * @retval SR_OK Success
+	 * @retval other Negative error code.
 	 */
-	int (*init) (struct sr_output *o);
-
-	/**
-	 * Whenever a chunk of data comes in, it will be passed to the
-	 * output module via this function. The <code>data_in</code> and
-	 * <code>length_in</code> values refers to this data; the module
-	 * must not alter or g_free() this buffer.
-	 *
-	 * The function must allocate a buffer for storing its output, and
-	 * pass along a pointer to this buffer in the <code>data_out</code>
-	 * parameter, as well as storing the length of the buffer in
-	 * <code>length_out</code>. The calling frontend will g_free()
-	 * this buffer when it's done with it.
-	 *
-	 * IMPORTANT: The memory allocation much happen using a glib memory
-	 * allocation call (not a "normal" malloc) since g_free() will be
-	 * used to free the memory!
-	 *
-	 * If there is no output, this function MUST store NULL in the
-	 * <code>data_out</code> parameter, so the caller knows not to try
-	 * and g_free() it.
-	 *
-	 * Note: This API call is obsolete, use receive() instead.
-	 *
-	 * @param o Pointer to the respective 'struct sr_output'.
-	 * @param data_in Pointer to the input data buffer.
-	 * @param length_in Length of the input.
-	 * @param data_out Pointer to the allocated output buffer.
-	 * @param length_out Length (in bytes) of the output.
-	 *
-	 * @return SR_OK upon success, a negative error code otherwise.
-	 */
-	int (*data) (struct sr_output *o, const uint8_t *data_in,
-		     uint64_t length_in, uint8_t **data_out,
-		     uint64_t *length_out);
-
-	/**
-	 * This function is called when an event occurs in the datafeed
-	 * which the output module may need to be aware of. No data is
-	 * passed in, only the fact that the event occurs. The following
-	 * events can currently be passed in:
-	 *
-	 *  - SR_DF_TRIGGER: At this point in the datafeed, the trigger
-	 *    matched. The output module may mark this in some way, e.g. by
-	 *    plotting a red line on a graph.
-	 *
-	 *  - SR_DF_END: This marks the end of the datafeed. No more calls
-	 *    into the output module will be done, so this is a good time to
-	 *    free up any memory used to keep state, for example.
-	 *
-	 * Any output generated by this function must have a reference to
-	 * it stored in the <code>data_out</code> and <code>length_out</code>
-	 * parameters, or NULL if no output was generated.
-	 *
-	 * Note: This API call is obsolete, use receive() instead.
-	 *
-	 * @param o Pointer to the respective 'struct sr_output'.
-	 * @param event_type Type of event that occured.
-	 * @param data_out Pointer to the allocated output buffer.
-	 * @param length_out Length (in bytes) of the output.
-	 *
-	 * @return SR_OK upon success, a negative error code otherwise.
-	 */
-	int (*event) (struct sr_output *o, int event_type, uint8_t **data_out,
-			uint64_t *length_out);
+	int (*init) (struct sr_output *o, GHashTable *options);
 
 	/**
 	 * This function is passed a copy of every packed in the data feed.
@@ -513,9 +521,10 @@ struct sr_output_format {
 	 * @param out A pointer where a GString * should be stored if
 	 * the module generates output, or NULL if not.
 	 *
-	 * @return SR_OK upon success, a negative error code otherwise.
+	 * @retval SR_OK Success
+	 * @retval other Negative error code.
 	 */
-	int (*receive) (struct sr_output *o, const struct sr_dev_inst *sdi,
+	int (*receive) (const struct sr_output *o,
 			const struct sr_datafeed_packet *packet, GString **out);
 
 	/**
@@ -523,23 +532,49 @@ struct sr_output_format {
 	 * the output module, and can be used to free any internal
 	 * resources the module may keep.
 	 *
-	 * @return SR_OK upon success, a negative error code otherwise.
+	 * @retval SR_OK Success
+	 * @retval other Negative error code.
 	 */
 	int (*cleanup) (struct sr_output *o);
 };
 
+
 enum {
-	SR_PROBE_LOGIC = 10000,
-	SR_PROBE_ANALOG,
+	SR_CHANNEL_LOGIC = 10000,
+	SR_CHANNEL_DSO,
+	SR_CHANNEL_ANALOG,
 };
 
-struct sr_probe {
-	/* The index field will go: use g_slist_length(sdi->probes) instead. */
+enum {
+	LOGIC = 0,
+	DSO = 1,
+	ANALOG = 2,
+};
+
+struct sr_channel {
+	/* The index field will go: use g_slist_length(sdi->channels) instead. */
 	int index;
 	int type;
 	gboolean enabled;
 	char *name;
 	char *trigger;
+	uint64_t vdiv;
+	uint16_t vfactor;
+	double vpos;
+	uint8_t coupling;
+	uint8_t trig_value;
+	uint16_t vpos_mid;
+	uint16_t voff_mid;
+};
+
+/** Structure for groups of channels that have common properties. */
+struct sr_channel_group {
+    /** Name of the channel group. */
+    char *name;
+    /** List of sr_channel structs of the channels belonging to this group. */
+    GSList *channels;
+    /** Private data for driver use. */
+    void *priv;
 };
 
 struct sr_config {
@@ -553,6 +588,54 @@ struct sr_config_info {
 	char *id;
 	char *name;
 	char *description;
+};
+
+enum {
+    SR_STATUS_TRIG_BEGIN = 0,
+    SR_STATUS_TRIG_END = 4,
+    SR_STATUS_CH0_BEGIN = 5,
+    SR_STATUS_CH0_END = 14,
+    SR_STATUS_CH1_BEGIN = 15,
+    SR_STATUS_CH1_END = 24,
+    SR_STATUS_ZERO_BEGIN = 128,
+    SR_STATUS_ZERO_END = 135,
+};
+
+struct sr_status {
+    uint8_t trig_hit;
+    uint8_t captured_cnt3;
+    uint8_t captured_cnt2;
+    uint8_t captured_cnt1;
+    uint8_t captured_cnt0;
+
+    uint8_t ch0_max;
+    uint8_t ch0_min;
+    uint64_t ch0_period;
+    uint32_t ch0_pcnt;
+    uint8_t ch1_max;
+    uint8_t ch1_min;
+    uint64_t ch1_period;
+    uint32_t ch1_pcnt;
+
+    uint32_t vlen;
+    gboolean stream_mode;
+    uint32_t sample_divider;
+
+    gboolean zeroing;
+    uint16_t ch0_vpos_mid;
+    uint16_t ch0_voff_mid;
+    uint16_t ch0_vcntr;
+    uint16_t ch1_vpos_mid;
+    uint16_t ch1_voff_mid;
+    uint16_t ch1_vcntr;
+    uint8_t ch0_adc_off;
+    uint8_t ch1_adc_off;
+    gboolean ch0_adc_sign;
+    gboolean ch1_adc_sign;
+
+    uint16_t comb0_off;
+    uint16_t comb1_off;
+    uint8_t comb_sign;
 };
 
 enum {
@@ -622,6 +705,11 @@ enum {
 	/** The device supports setting a pre/post-trigger capture ratio. */
 	SR_CONF_CAPTURE_RATIO,
 
+    /** */
+    SR_CONF_DEVICE_MODE,
+    SR_CONF_INSTANT,
+    SR_CONF_STATUS,
+
 	/** The device supports setting a pattern (pattern generator mode). */
 	SR_CONF_PATTERN_MODE,
 
@@ -633,6 +721,9 @@ enum {
 
 	/** Trigger source. */
 	SR_CONF_TRIGGER_SOURCE,
+
+    /** Trigger Value. */
+    SR_CONF_TRIGGER_VALUE,
 
 	/** Horizontal trigger position. */
 	SR_CONF_HORIZ_TRIGGERPOS,
@@ -646,11 +737,38 @@ enum {
 	/** Filter. */
 	SR_CONF_FILTER,
 
-	/** Volts/div. */
-	SR_CONF_VDIV,
+    /** DSO configure sync */
+    SR_CONF_DSO_SYNC,
 
-	/** Coupling. */
-	SR_CONF_COUPLING,
+    /** Zero */
+    SR_CONF_ZERO_SET,
+    SR_CONF_COMB_SET,
+    SR_CONF_ZERO,
+    SR_CONF_ZERO_OVER,
+
+    /** Stream */
+    SR_CONF_STREAM,
+
+    /** Test */
+    SR_CONF_TEST,
+
+    /** Volts/div for dso channel. */
+    SR_CONF_VDIV,
+
+    /** Vertical position */
+    SR_CONF_VPOS,
+
+    /** Vertical offset */
+    SR_CONF_VOFF,
+
+    /** Coupling for dso channel. */
+    SR_CONF_COUPLING,
+
+    /** Channel enable for dso channel. */
+    SR_CONF_EN_CH,
+
+    /** probe factor for dso channel. */
+    SR_CONF_FACTOR,
 
 	/** Trigger types.  */
 	SR_CONF_TRIGGER_TYPE,
@@ -664,6 +782,25 @@ enum {
 	/** Number of vertical divisions, as related to SR_CONF_VDIV.  */
 	SR_CONF_NUM_VDIV,
 
+    /** clock type (internal/external) */
+    SR_CONF_CLOCK_TYPE,
+
+    /** clock edge (posedge/negedge) */
+    SR_CONF_CLOCK_EDGE,
+
+    /** Device operation mode */
+    SR_CONF_OPERATION_MODE,
+
+    /** Device sample threshold */
+    SR_CONF_THRESHOLD,
+    SR_CONF_VTH,
+
+    /** Device capacity **/
+    SR_CONF_MAX_DSO_SAMPLERATE,
+    SR_CONF_MAX_DSO_SAMPLELIMITS,
+    SR_CONF_MAX_LOGIC_SAMPLERATE,
+    SR_CONF_MAX_LOGIC_SAMPLELIMITS,
+
 	/*--- Special stuff -------------------------------------------------*/
 
 	/** Scan options supported by the driver. */
@@ -671,6 +808,7 @@ enum {
 
 	/** Device options for a particular device. */
 	SR_CONF_DEVICE_OPTIONS,
+    SR_CONF_DEVICE_CONFIGS,
 
 	/** Session filename. */
 	SR_CONF_SESSIONFILE,
@@ -717,16 +855,30 @@ enum {
 };
 
 struct sr_dev_inst {
-	struct sr_dev_driver *driver;
-	int index;
-	int status;
-	int inst_type;
-	char *vendor;
-	char *model;
-	char *version;
-	GSList *probes;
-	void *conn;
-	void *priv;
+    /** Device driver. */
+    struct sr_dev_driver *driver;
+    /** Index of device in driver. */
+    int index;
+    /** Device instance status. SR_ST_NOT_FOUND, etc. */
+    int status;
+    /** Device instance type. SR_INST_USB, etc. */
+    int inst_type;
+    /** Device mode. LA/DAQ/OSC, etc. */
+    int mode;
+    /** Device vendor. */
+    char *vendor;
+    /** Device model. */
+    char *model;
+    /** Device version. */
+    char *version;
+    /** List of channels. */
+    GSList *channels;
+    /** List of sr_channel_group structs */
+    GSList *channel_groups;
+    /** Device instance connection data (used?) */
+    void *conn;
+    /** Device instance private data (used?) */
+    void *priv;
 };
 
 /** Types of device instances (sr_dev_inst). */
@@ -751,6 +903,51 @@ enum {
 	SR_ST_STOPPING,
 };
 
+/** Device operation modes. */
+enum {
+    /** Normal */
+    SR_OP_NORMAL = 0,
+    /** Internal pattern test mode */
+    SR_OP_INTERNAL_TEST = 1,
+    /** External pattern test mode */
+    SR_OP_EXTERNAL_TEST = 2,
+    /** SDRAM loopback test mode */
+    SR_OP_LOOPBACK_TEST = 3,
+};
+
+/** Device threshold level. */
+enum {
+    /** 1.8/2.5/3.3 level */
+    SR_TH_3V3 = 0,
+    /** 5.0 level */
+    SR_TH_5V0 = 1,
+};
+
+/** Device input filter. */
+enum {
+    /** None */
+    SR_FILTER_NONE = 0,
+    /** One clock cycle */
+    SR_FILTER_1T = 1,
+};
+
+/** Coupling. */
+enum {
+    /** DC */
+    SR_DC_COUPLING = 0,
+    /** AC */
+    SR_AC_COUPLING = 1,
+    /** Ground */
+    SR_GND_COUPLING = 2,
+};
+
+extern char config_path[256];
+
+struct sr_dev_mode {
+    char *name;
+    int mode;
+};
+
 struct sr_dev_driver {
 	/* Driver-specific */
 	char *name;
@@ -760,17 +957,28 @@ struct sr_dev_driver {
 	int (*cleanup) (void);
 	GSList *(*scan) (GSList *options);
 	GSList *(*dev_list) (void);
-	int (*dev_clear) (void);
-	int (*config_get) (int id, GVariant **data,
-			const struct sr_dev_inst *sdi);
-	int (*config_set) (int id, GVariant *data,
-			const struct sr_dev_inst *sdi);
-	int (*config_list) (int info_id, GVariant **data,
-			const struct sr_dev_inst *sdi);
+    GSList *(*dev_mode_list) (void);
+    int (*dev_clear) (void);
+
+    int (*config_get) (int id, GVariant **data,
+                       const struct sr_dev_inst *sdi,
+                       const struct sr_channel *ch,
+                       const struct sr_channel_group *cg);
+    int (*config_set) (int id, GVariant *data,
+                       const struct sr_dev_inst *sdi,
+                       const struct sr_channel *ch,
+                       const struct sr_channel_group *cg);
+    int (*config_list) (int info_id, GVariant **data,
+                        const struct sr_dev_inst *sdi,
+                        const struct sr_channel_group *cg);
 
 	/* Device-specific */
 	int (*dev_open) (struct sr_dev_inst *sdi);
 	int (*dev_close) (struct sr_dev_inst *sdi);
+    int (*dev_test) (struct sr_dev_inst *sdi);
+    int (*dev_status_get) (struct sr_dev_inst *sdi,
+                           struct sr_status *status,
+                           int begin, int end);
 	int (*dev_acquisition_start) (const struct sr_dev_inst *sdi,
 			void *cb_data);
 	int (*dev_acquisition_stop) (struct sr_dev_inst *sdi,
@@ -786,6 +994,7 @@ struct sr_session {
 	/** List of struct datafeed_callback pointers. */
 	GSList *datafeed_callbacks;
 	GTimeVal starttime;
+	gboolean running;
 
 	unsigned int num_sources;
 
@@ -804,8 +1013,45 @@ struct sr_session {
 	 * an async fashion. We need to make sure the session is stopped from
 	 * within the session thread itself.
 	 */
-	GMutex stop_mutex;
+//	GMutex stop_mutex;
 	gboolean abort_session;
+};
+
+enum {
+    SIMPLE_TRIGGER = 0,
+    ADV_TRIGGER,
+};
+
+enum {
+    DSO_TRIGGER_AUTO = 0,
+    DSO_TRIGGER_CH0,
+    DSO_TRIGGER_CH1,
+    DSO_TRIGGER_CH0A1,
+    DSO_TRIGGER_CH0O1,
+};
+enum {
+    DSO_TRIGGER_RISING = 0,
+    DSO_TRIGGER_FALLING,
+};
+
+struct ds_trigger {
+    uint16_t trigger_en;
+    uint16_t trigger_mode;
+    uint16_t trigger_pos;
+    uint16_t trigger_stages;
+    unsigned char trigger_logic[TriggerStages+1];
+    unsigned char trigger0_inv[TriggerStages+1];
+    unsigned char trigger1_inv[TriggerStages+1];
+    char trigger0[TriggerStages+1][TriggerProbes];
+    char trigger1[TriggerStages+1][TriggerProbes];
+    uint16_t trigger0_count[TriggerStages+1];
+    uint16_t trigger1_count[TriggerStages+1];
+};
+
+struct ds_trigger_pos {
+    uint32_t real_pos;
+    uint32_t ram_saddr;
+    unsigned char first_block[504];
 };
 
 #include "proto.h"

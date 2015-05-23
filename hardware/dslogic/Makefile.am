@@ -17,25 +17,18 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-SUBDIRS = text
+if HW_DSLOGIC
 
 # Local lib, this is NOT meant to be installed!
-noinst_LTLIBRARIES = libsigrokoutput.la
+noinst_LTLIBRARIES = libsigrokhwdslogic.la
 
-libsigrokoutput_la_SOURCES = \
-	binary.c \
-	vcd.c \
-	ols.c \
-	gnuplot.c \
-	chronovu_la8.c \
-	csv.c \
-	analog.c \
-	output.c \
-	srzip.c
+libsigrokhwdslogic_la_SOURCES = \
+	command.c \
+	dslogic.c \
+	dscope.c
 
-libsigrokoutput_la_CFLAGS = \
+libsigrokhwdslogic_la_CFLAGS = \
 	-I$(top_srcdir)
 
-libsigrokoutput_la_LIBADD = \
-	text/libsigrokoutputtext.la
+endif
 
