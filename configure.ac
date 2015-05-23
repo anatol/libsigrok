@@ -119,6 +119,11 @@ AC_ARG_ENABLE(demo, AC_HELP_STRING([--enable-demo],
 	[LA_DEMO="$enableval"],
 	[LA_DEMO=$HW_ENABLED_DEFAULT])
 
+AC_ARG_ENABLE(dslogic, AC_HELP_STRING([--enable-dslogic],
+	[enable DSLogic support [default=yes]]),
+	[HW_DSLOGIC="$enableval"],
+	[HW_DSLOGIC=$HW_ENABLED_DEFAULT])
+
 AC_ARG_ENABLE(fluke-dmm, AC_HELP_STRING([--enable-fluke-dmm],
 	[enable Fluke DMM support [default=yes]]),
 	[HW_FLUKE_DMM="$enableval"],
@@ -187,6 +192,9 @@ AC_ARG_ENABLE(zeroplus-logic-cube,
 # libsigrok.pc file.
 SR_PKGLIBS=""
 
+# libm (the standard math library) is always needed.
+AC_SEARCH_LIBS([pow], [m])
+
 # libglib-2.0 is always needed. Abort if it's not found.
 # Note: glib-2.0 is part of the libsigrok API (hard pkg-config requirement).
 # We require at least 2.32.0 due to e.g. g_variant_new_fixed_array().
@@ -197,6 +205,23 @@ AM_PATH_GLIB_2_0([2.32.0],
 PKG_CHECK_MODULES([libzip], [libzip >= 0.8],
 	[CFLAGS="$CFLAGS $libzip_CFLAGS"; LIBS="$LIBS $libzip_LIBS";
 	SR_PKGLIBS="$SR_PKGLIBS libzip"])
+
+# libserialport is only needed for some hardware drivers. Disable the
+# respective drivers if it is not found.
+PKG_CHECK_MODULES([libserialport], [libserialport >= 0.1.0],
+	[have_libserialport="yes"; CFLAGS="$CFLAGS $libserialport_CFLAGS";
+	LIBS="$LIBS $libserialport_LIBS";
+	SR_PKGLIBS="$SR_PKGLIBS libserialport"],
+	[have_libserialport="no"])
+
+# Define HAVE_LIBSERIALPORT in config.h if we found libserialport.
+if test "x$have_libserialport" != "xno"; then
+	AC_DEFINE_UNQUOTED(HAVE_LIBSERIALPORT, [1],
+		[Specifies whether we have libserialport.])
+fi
+
+# Serial port helper code is only compiled in if libserialport was found.
+AM_CONDITIONAL(NEED_SERIAL, test "x$have_libserialport" != xno)
 
 # libusb-1.0 is only needed for some hardware drivers. Disable the respective
 # drivers if it is not found.
@@ -302,6 +327,11 @@ if test "x$LA_DEMO" = "xyes"; then
 	AC_DEFINE(HAVE_LA_DEMO, 1, [Demo driver support])
 fi
 
+AM_CONDITIONAL(HW_DSLOGIC, test x$HW_DSLOGIC = xyes)
+if test "x$HW_DSLOGIC" = "xyes"; then
+	AC_DEFINE(HAVE_HW_DSLOGIC, 1, [DSLogic support])
+fi
+
 AM_CONDITIONAL(HW_FLUKE_DMM, test x$HW_FLUKE_DMM = xyes)
 if test "x$HW_FLUKE_DMM" = "xyes"; then
 	AC_DEFINE(HAVE_HW_FLUKE_DMM, 1, [Fluke DMM support])
@@ -367,6 +397,7 @@ fi
 AC_CHECK_HEADERS([fcntl.h sys/time.h termios.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_C_BIGENDIAN
 AC_C_INLINE
 AC_TYPE_INT8_T
 AC_TYPE_INT16_T
@@ -410,6 +441,7 @@ AC_CONFIG_FILES([Makefile version.h hardware/Makefile
 		 hardware/victor-dmm/Makefile
 		 hardware/common/dmm/Makefile
 		 hardware/demo/Makefile
+		 hardware/dslogic/Makefile
 		 hardware/fluke-dmm/Makefile
 		 hardware/fx2lafw/Makefile
 		 hardware/hantek-dso/Makefile
@@ -440,7 +472,7 @@ echo "Detected libraries:"
 echo
 
 # Note: This only works for libs with pkg-config integration.
-for lib in "glib-2.0 >= 2.32.0" "libzip >= 0.8" "libusb-1.0 >= 1.0.9" "libftdi >= 0.16" "alsa >= 1.0" "check >= 0.9.4"; do
+for lib in "glib-2.0 >= 2.32.0" "libzip >= 0.8" "libserialport >= 0.1.0" "libusb-1.0 >= 1.0.9" "libftdi >= 0.16" "libudev >= 151" "alsa >= 1.0" "check >= 0.9.4"; do
 	if `$PKG_CONFIG --exists $lib`; then
 		ver=`$PKG_CONFIG --modversion $lib`
 		answer="yes ($ver)"
@@ -458,6 +490,7 @@ echo "  - brymen-dmm...................... $HW_BRYMEN_DMM"
 echo "  - chronovu-la8.................... $LA_CHRONOVU_LA8"
 echo "  - colead-slm...................... $HW_COLEAD_SLM"
 echo "  - demo............................ $LA_DEMO"
+echo "  - dslogic......................... $HW_DSLOGIC"
 echo "  - fluke-dmm....................... $HW_FLUKE_DMM"
 echo "  - fx2lafw......................... $LA_FX2LAFW"
 echo "  - hantek-dso...................... $HW_HANTEK_DSO"

@@ -53,6 +53,7 @@ SR_API int sr_dev_trigger_set(const struct sr_dev_inst *sdi, int probenum,
 		const char *trigger);
 SR_API gboolean sr_dev_has_option(const struct sr_dev_inst *sdi, int key);
 SR_API GSList *sr_dev_list(const struct sr_dev_driver *driver);
+SR_API GSList *sr_dev_mode_list(const struct sr_dev_driver *driver);
 SR_API int sr_dev_clear(const struct sr_dev_driver *driver);
 SR_API int sr_dev_open(struct sr_dev_inst *sdi);
 SR_API int sr_dev_close(struct sr_dev_inst *sdi);
@@ -70,14 +71,22 @@ SR_API struct sr_dev_driver **sr_driver_list(void);
 SR_API int sr_driver_init(struct sr_context *ctx,
 		struct sr_dev_driver *driver);
 SR_API GSList *sr_driver_scan(struct sr_dev_driver *driver, GSList *options);
-SR_API int sr_config_get(const struct sr_dev_driver *driver, int key,
-		GVariant **data, const struct sr_dev_inst *sdi);
-SR_API int sr_config_set(const struct sr_dev_inst *sdi, int key,
-		GVariant *data);
-SR_API int sr_config_list(const struct sr_dev_driver *driver, int key,
-		GVariant **data, const struct sr_dev_inst *sdi);
+SR_API int sr_config_get(const struct sr_dev_driver *driver,
+                         const struct sr_dev_inst *sdi,
+                         const struct sr_channel *ch,
+                         const struct sr_channel_group *cg,
+                         int key, GVariant **data);
+SR_API int sr_config_set(const struct sr_dev_inst *sdi,
+                         const struct sr_channel *ch,
+                         const struct sr_channel_group *cg,
+                         int key, GVariant *data);
+SR_API int sr_config_list(const struct sr_dev_driver *driver,
+                          const struct sr_dev_inst *sdi,
+                          const struct sr_channel_group *cg,
+                          int key, GVariant **data);
 SR_API const struct sr_config_info *sr_config_info_get(int key);
 SR_API const struct sr_config_info *sr_config_info_name_get(const char *optname);
+SR_API int sr_status_get(const struct sr_dev_inst *sdi, struct sr_status *status, int begin, int end);
 
 /*--- session.c -------------------------------------------------------------*/
 
@@ -90,6 +99,7 @@ SR_API struct sr_session *sr_session_new(void);
 SR_API int sr_session_destroy(void);
 SR_API int sr_session_dev_remove_all(void);
 SR_API int sr_session_dev_add(const struct sr_dev_inst *sdi);
+SR_API int sr_session_dev_list(GSList **devlist);
 
 /* Datafeed setup */
 SR_API int sr_session_datafeed_callback_remove_all(void);
@@ -102,12 +112,16 @@ SR_API int sr_session_run(void);
 SR_API int sr_session_stop(void);
 SR_API int sr_session_save(const char *filename, const struct sr_dev_inst *sdi,
 		unsigned char *buf, int unitsize, int units);
+SR_API int sr_session_save_init(const char *filename, uint64_t samplerate,
+        char **channels);
+SR_API int sr_session_append(const char *filename, unsigned char *buf,
+        int unitsize, int units);
 SR_API int sr_session_source_add(int fd, int events, int timeout,
-		sr_receive_data_callback_t cb, void *cb_data);
+		sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi);
 SR_API int sr_session_source_add_pollfd(GPollFD *pollfd, int timeout,
-		sr_receive_data_callback_t cb, void *cb_data);
+		sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi);
 SR_API int sr_session_source_add_channel(GIOChannel *channel, int events,
-		int timeout, sr_receive_data_callback_t cb, void *cb_data);
+		int timeout, sr_receive_data_callback_t cb, const struct sr_dev_inst *sdi);
 SR_API int sr_session_source_remove(int fd);
 SR_API int sr_session_source_remove_pollfd(GPollFD *pollfd);
 SR_API int sr_session_source_remove_channel(GIOChannel *channel);
@@ -118,13 +132,16 @@ SR_API struct sr_input_format **sr_input_list(void);
 
 /*--- output/output.c -------------------------------------------------------*/
 
-SR_API struct sr_output_format **sr_output_list(void);
+SR_API const struct sr_output_module **sr_output_list(void);
 
 /*--- strutil.c -------------------------------------------------------------*/
 
 SR_API char *sr_si_string_u64(uint64_t x, const char *unit);
+SR_API char *sr_iec_string_u64(uint64_t x, const char *unit);
 SR_API char *sr_samplerate_string(uint64_t samplerate);
+SR_API char *sr_samplecount_string(uint64_t samplecount);
 SR_API char *sr_period_string(uint64_t frequency);
+SR_API char *sr_time_string(uint64_t time);
 SR_API char *sr_voltage_string(uint64_t v_p, uint64_t v_q);
 SR_API char **sr_parse_triggerstring(const struct sr_dev_inst *sdi,
 		const char *triggerstring);
@@ -150,5 +167,19 @@ SR_API const char *sr_lib_version_string_get(void);
 
 SR_API const char *sr_strerror(int error_code);
 SR_API const char *sr_strerror_name(int error_code);
+
+/*--- trigger.c ------------------------------------------------------------*/
+SR_API int ds_trigger_init(void);
+SR_API int ds_trigger_destroy(void);
+SR_API int ds_trigger_stage_set_value(uint16_t stage, uint16_t probes, char *trigger0, char *trigger1);
+SR_API int ds_trigger_stage_set_logic(uint16_t stage, uint16_t probes, unsigned char trigger_logic);
+SR_API int ds_trigger_stage_set_inv(uint16_t stage, uint16_t probes, unsigned char trigger0_inv, unsigned char trigger1_inv);
+SR_API int ds_trigger_stage_set_count(uint16_t stage, uint16_t probes, uint16_t trigger0_count, uint16_t trigger1_count);
+SR_API int ds_trigger_probe_set(uint16_t probe, unsigned char trigger0, unsigned char trigger1);
+SR_API int ds_trigger_set_stage(uint16_t stages);
+SR_API int ds_trigger_set_pos(uint16_t position);
+SR_API uint16_t ds_trigger_get_pos();
+SR_API int ds_trigger_set_en(uint16_t enable);
+SR_API int ds_trigger_set_mode(uint16_t mode);
 
 #endif

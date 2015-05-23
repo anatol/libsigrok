@@ -83,12 +83,13 @@ SR_PRIV int sr_err(const char *format, ...);
 
 /*--- device.c --------------------------------------------------------------*/
 
-SR_PRIV struct sr_probe *sr_probe_new(int index, int type,
-		gboolean enabled, const char *name);
+SR_PRIV struct sr_channel *sr_channel_new(int index, int type,
+                                          gboolean enabled, const char *name);
+SR_PRIV void sr_dev_probes_free(struct sr_dev_inst *sdi);
 
 /* Generic device instances */
-SR_PRIV struct sr_dev_inst *sr_dev_inst_new(int index, int status,
-		const char *vendor, const char *model, const char *version);
+SR_PRIV struct sr_dev_inst *sr_dev_inst_new(int mode, int index, int status,
+                                            const char *vendor, const char *model, const char *version);
 SR_PRIV void sr_dev_inst_free(struct sr_dev_inst *sdi);
 
 #ifdef HAVE_LIBUSB_1_0
@@ -134,6 +135,14 @@ SR_PRIV int std_session_send_df_header(const struct sr_dev_inst *sdi,
 		const char *prefix);
 SR_PRIV int std_dev_clear(const struct sr_dev_driver *driver,
 		std_dev_clear_t clear_private);
+
+/*--- trigger.c -------------------------------------------------*/
+SR_PRIV uint64_t sr_trigger_get_mask0(uint16_t stage);
+SR_PRIV uint64_t sr_trigger_get_mask1(uint16_t stage);
+SR_PRIV uint64_t sr_trigger_get_value0(uint16_t stage);
+SR_PRIV uint64_t sr_trigger_get_value1(uint16_t stage);
+SR_PRIV uint64_t sr_trigger_get_edge0(uint16_t stage);
+SR_PRIV uint64_t sr_trigger_get_edge1(uint16_t stage);
 
 /*--- hardware/common/serial.c ----------------------------------------------*/
 

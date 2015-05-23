@@ -57,11 +57,15 @@ static struct sr_config_info sr_config_info_data[] = {
 		"Serial communication", NULL},
 	{SR_CONF_SAMPLERATE, SR_T_UINT64, "samplerate",
 		"Sample rate", NULL},
-	{SR_CONF_CAPTURE_RATIO, SR_T_UINT64, "captureratio",
+    {SR_CONF_CLOCK_TYPE, SR_T_BOOL, "clocktype",
+        "Using External Clock", NULL},
+    {SR_CONF_CLOCK_EDGE, SR_T_BOOL, "clockedge",
+        "Using Clock Negedge", NULL},
+    {SR_CONF_CAPTURE_RATIO, SR_T_UINT64, "captureratio",
 		"Pre-trigger capture ratio", NULL},
-	{SR_CONF_PATTERN_MODE, SR_T_CHAR, "pattern",
-		"Pattern generator mode", NULL},
-	{SR_CONF_TRIGGER_TYPE, SR_T_CHAR, "triggertype",
+    {SR_CONF_PATTERN_MODE, SR_T_CHAR, "pattern",
+        "Pattern mode", NULL},
+    {SR_CONF_TRIGGER_TYPE, SR_T_CHAR, "triggertype",
 		"Trigger types", NULL},
 	{SR_CONF_RLE, SR_T_BOOL, "rle",
 		"Run Length Encoding", NULL},
@@ -76,13 +80,21 @@ static struct sr_config_info sr_config_info_data[] = {
 	{SR_CONF_TIMEBASE, SR_T_RATIONAL_PERIOD, "timebase",
 		"Time base", NULL},
 	{SR_CONF_FILTER, SR_T_CHAR, "filter",
-		"Filter targets", NULL},
-	{SR_CONF_VDIV, SR_T_RATIONAL_VOLT, "vdiv",
+        "Filter Targets", NULL},
+    {SR_CONF_VDIV, SR_T_RATIONAL_VOLT, "vdiv",
 		"Volts/div", NULL},
-	{SR_CONF_COUPLING, SR_T_CHAR, "coupling",
-		"Coupling", NULL},
+    {SR_CONF_VDIV, SR_T_RATIONAL_VOLT, "factor",
+        "Probe Factor", NULL},
+    {SR_CONF_COUPLING, SR_T_CHAR, "coupling",
+        "Coupling", NULL},
 	{SR_CONF_DATALOG, SR_T_BOOL, "datalog",
 		"Datalog", NULL},
+    {SR_CONF_OPERATION_MODE, SR_T_CHAR, "operation",
+        "Operation Mode", NULL},
+    {SR_CONF_THRESHOLD, SR_T_CHAR, "threshold",
+        "Threshold Level", NULL},
+    {SR_CONF_VTH, SR_T_FLOAT, "threshold",
+        "Threshold Level", NULL},
 	{0, 0, NULL, NULL, NULL},
 };
 
@@ -95,6 +107,10 @@ extern SR_PRIV struct sr_dev_driver colead_slm_driver_info;
 #endif
 #ifdef HAVE_LA_DEMO
 extern SR_PRIV struct sr_dev_driver demo_driver_info;
+#endif
+#ifdef HAVE_DSL_DEVICE
+extern SR_PRIV struct sr_dev_driver DSLogic_driver_info;
+extern SR_PRIV struct sr_dev_driver DSCope_driver_info;
 #endif
 #ifdef HAVE_HW_LASCAR_EL_USB
 extern SR_PRIV struct sr_dev_driver lascar_el_usb_driver_info;
@@ -178,6 +194,10 @@ static struct sr_dev_driver *drivers_list[] = {
 #endif
 #ifdef HAVE_LA_DEMO
 	&demo_driver_info,
+#endif
+#ifdef HAVE_DSL_DEVICE
+    &DSLogic_driver_info,
+    &DSCope_driver_info,
 #endif
 #ifdef HAVE_HW_LASCAR_EL_USB
 	&lascar_el_usb_driver_info,
@@ -404,8 +424,11 @@ SR_PRIV void sr_config_free(struct sr_config *src)
  *         but this is not to be flagged as an error by the caller; merely
  *         as an indication that it's not applicable.
  */
-SR_API int sr_config_get(const struct sr_dev_driver *driver, int key,
-		GVariant **data, const struct sr_dev_inst *sdi)
+SR_API int sr_config_get(const struct sr_dev_driver *driver,
+                         const struct sr_dev_inst *sdi,
+                         const struct sr_channel *ch,
+                         const struct sr_channel_group *cg,
+                         int key, GVariant **data)
 {
 	int ret;
 
@@ -415,7 +438,7 @@ SR_API int sr_config_get(const struct sr_dev_driver *driver, int key,
 	if (!driver->config_get)
 		return SR_ERR_ARG;
 
-	if ((ret = driver->config_get(key, data, sdi)) == SR_OK) {
+	if ((ret = driver->config_get(key, data, sdi, ch, cg)) == SR_OK) {
 		/* Got a floating reference from the driver. Sink it here,
 		 * caller will need to unref when done with it. */
 		g_variant_ref_sink(*data);
@@ -438,7 +461,10 @@ SR_API int sr_config_get(const struct sr_dev_driver *driver, int key,
  *         but this is not to be flagged as an error by the caller; merely
  *         as an indication that it's not applicable.
  */
-SR_API int sr_config_set(const struct sr_dev_inst *sdi, int key, GVariant *data)
+SR_API int sr_config_set(const struct sr_dev_inst *sdi,
+                         const struct sr_channel *ch,
+                         const struct sr_channel_group *cg,
+                         int key, GVariant *data)
 {
 	int ret;
 
@@ -449,7 +475,7 @@ SR_API int sr_config_set(const struct sr_dev_inst *sdi, int key, GVariant *data)
 	else if (!sdi->driver->config_set)
 		ret = SR_ERR_ARG;
 	else
-		ret = sdi->driver->config_set(key, data, sdi);
+	ret = sdi->driver->config_set(key, data, sdi, ch, cg);
 
 	g_variant_unref(data);
 
@@ -474,8 +500,10 @@ SR_API int sr_config_set(const struct sr_dev_inst *sdi, int key, GVariant *data)
  *         but this is not to be flagged as an error by the caller; merely
  *         as an indication that it's not applicable.
  */
-SR_API int sr_config_list(const struct sr_dev_driver *driver, int key,
-		GVariant **data, const struct sr_dev_inst *sdi)
+SR_API int sr_config_list(const struct sr_dev_driver *driver,
+                          const struct sr_dev_inst *sdi,
+                          const struct sr_channel_group *cg,
+                          int key, GVariant **data)
 {
 	int ret;
 
@@ -483,7 +511,7 @@ SR_API int sr_config_list(const struct sr_dev_driver *driver, int key,
 		ret = SR_ERR;
 	else if (!driver->config_list)
 		ret = SR_ERR_ARG;
-	else if ((ret = driver->config_list(key, data, sdi)) == SR_OK)
+	else if ((ret = driver->config_list(key, data, sdi, cg)) == SR_OK)
 		g_variant_ref_sink(*data);
 
 	return ret;
@@ -510,7 +538,34 @@ SR_API const struct sr_config_info *sr_config_info_get(int key)
 }
 
 /**
- * Get information about an configuration key, by name.
+ * Get status about an acquisition
+ *
+ * @param sdi The device instance.
+ * @param status A pointer to a struct sr_capture_status.
+ *
+ * @return SR_OK upon success or SR_ERR in case of error. Note SR_ERR_ARG
+ *         may be returned by the driver indicating it doesn't know that key,
+ *         but this is not to be flagged as an error by the caller; merely
+ *         as an indication that it's not applicable.
+ */
+SR_API int sr_status_get(const struct sr_dev_inst *sdi,
+                         struct sr_status *status,
+                         int begin, int end)
+{
+    int ret;
+
+    if (!sdi->driver)
+        ret = SR_ERR;
+    else if (!sdi->driver->dev_status_get)
+        ret = SR_ERR_ARG;
+    else
+        ret = sdi->driver->dev_status_get(sdi, status, begin, end);
+
+    return ret;
+}
+
+/**
+ * Get status about an acquisition.
  *
  * @param optname The configuration key.
  *
