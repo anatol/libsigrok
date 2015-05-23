@@ -171,7 +171,7 @@ enum {
 	SR_DF_META,
 	SR_DF_TRIGGER,
 	SR_DF_LOGIC,
-    SR_DF_DSO,
+	SR_DF_DSO,
 	SR_DF_ANALOG,
 	SR_DF_FRAME_BEGIN,
 	SR_DF_FRAME_END,
@@ -303,7 +303,7 @@ struct sr_datafeed_meta {
 struct sr_datafeed_logic {
 	uint64_t length;
 	uint16_t unitsize;
-    uint16_t data_error;
+	uint16_t data_error;
 	void *data;
 };
 
@@ -312,18 +312,18 @@ struct sr_datafeed_trigger {
 };
 
 struct sr_datafeed_dso {
-    /** The probes for which data is included in this packet. */
-    GSList *probes;
-    int num_samples;
-    /** Measured quantity (voltage, current, temperature, and so on). */
-    int mq;
-    /** Unit in which the MQ is measured. */
-    int unit;
-    /** Bitmap with extra information about the MQ. */
-    uint64_t mqflags;
-    /** The analog value(s). The data is interleaved according to
-     * the probes list. */
-    void *data;
+	/** The probes for which data is included in this packet. */
+	GSList *probes;
+	int num_samples;
+	/** Measured quantity (voltage, current, temperature, and so on). */
+	int mq;
+	/** Unit in which the MQ is measured. */
+	int unit;
+	/** Bitmap with extra information about the MQ. */
+	uint64_t mqflags;
+	/** The analog value(s). The data is interleaved according to
+ 	 * the probes list. */
+	void *data;
 };
 
 struct sr_datafeed_analog {
@@ -389,7 +389,7 @@ struct sr_input_format {
 
 	/**
 	 * Load a file, parsing the input according to the file's format.
-     *
+	 *
 	 * This function will send datafeed packets to the session bus, so
 	 * the calling frontend must have registered its session callbacks
 	 * beforehand.
@@ -404,7 +404,7 @@ struct sr_input_format {
 	 *           the responsibility of the caller to free it later.
 	 * @param filename The name (and path) of the file to use.
 	 *
-     * @return SR_OK upon succcess, a negative error code upon failure.
+	 * @return SR_OK upon success, a negative error code upon failure.
 	 */
 	int (*loadfile) (struct sr_input *in, const char *filename);
 };
@@ -540,31 +540,31 @@ struct sr_output_module {
 
 
 enum {
-    SR_CHANNEL_LOGIC = 10000,
-    SR_CHANNEL_DSO,
-    SR_CHANNEL_ANALOG,
+	SR_CHANNEL_LOGIC = 10000,
+	SR_CHANNEL_DSO,
+	SR_CHANNEL_ANALOG,
 };
 
 enum {
-    LOGIC = 0,
-    DSO = 1,
-    ANALOG = 2,
+	LOGIC = 0,
+	DSO = 1,
+	ANALOG = 2,
 };
 
 struct sr_channel {
-    /* The index field will go: use g_slist_length(sdi->channels) instead. */
+	/* The index field will go: use g_slist_length(sdi->channels) instead. */
 	int index;
 	int type;
 	gboolean enabled;
 	char *name;
 	char *trigger;
-    uint64_t vdiv;
-    uint16_t vfactor;
-    double vpos;
-    uint8_t coupling;
-    uint8_t trig_value;
-    uint16_t vpos_mid;
-    uint16_t voff_mid;
+	uint64_t vdiv;
+	uint16_t vfactor;
+	double vpos;
+	uint8_t coupling;
+	uint8_t trig_value;
+	uint16_t vpos_mid;
+	uint16_t voff_mid;
 };
 
 /** Structure for groups of channels that have common properties. */

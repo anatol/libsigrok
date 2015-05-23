@@ -33,13 +33,13 @@ struct context {
 	char separator;
 	gboolean header_done;
 	int *channel_index;
-    float *channel_vdiv;
-    double *channel_vpos;
-    uint64_t timebase;
-    uint64_t mask;
-    uint64_t pre_data;
-    uint64_t index;
-    int type;
+	float *channel_vdiv;
+	double *channel_vpos;
+	uint64_t timebase;
+	uint64_t mask;
+	uint64_t pre_data;
+	uint64_t index;
+	int type;
 };
 
 /*
@@ -82,8 +82,8 @@ static int init(struct sr_output *o, GHashTable *options)
 		ctx->num_enabled_channels++;
 	}
 	ctx->channel_index = g_malloc(sizeof(int) * ctx->num_enabled_channels);
-    ctx->channel_vdiv = g_malloc(sizeof(float) * ctx->num_enabled_channels);
-    ctx->channel_vpos = g_malloc(sizeof(double) * ctx->num_enabled_channels);
+	ctx->channel_vdiv = g_malloc(sizeof(float) * ctx->num_enabled_channels);
+	ctx->channel_vpos = g_malloc(sizeof(double) * ctx->num_enabled_channels);
 
 	/* Once more to map the enabled channels. */
 	for (i = 0, l = o->sdi->channels; l; l = l->next) {

@@ -1,9 +1,6 @@
 -------------------------------------------------------------------------------
 README
 -------------------------------------------------------------------------------
-libsigrok4DSL is a shared library which provides the basic API
-for DreamSourceLab hardware.
-libsigrok4DSL is based on libsigrok, a shared library from the sigrok project.
 
 The sigrok project aims at creating a portable, cross-platform,
 Free/Libre/Open-Source signal analysis software suite that supports various
@@ -47,15 +44,16 @@ Requirements
 
 Building and installing
 -----------------------
-Get the libsigrok4DSL source code from: www.dreamsourcelab.com/download.html
-In order to build it, run:
 
+In order to get the libsigrok source code and build it, run:
+
+ $ git clone git://sigrok.org/libsigrok
  $ cd libsigrok
  $ ./autogen.sh
  $ ./configure
  $ make
 
-For installing libsigrok4DSL:
+For installing libsigrok:
 
  $ make install
 
@@ -64,10 +62,24 @@ See INSTALL or the following wiki page for more (OS-specific) instructions:
  http://sigrok.org/wiki/Building
 
 
+Device-specific issues
+----------------------
+
+Please check README.devices for some notes and hints about device- or
+driver-specific issues to be aware of.
+
+
+Firmware
+--------
+
+Some devices supported by libsigrok need a firmware to be uploaded before the
+device can be used. See README.devices for details.
+
+
 Copyright and license
 ---------------------
 
-libsigrok4DSL is licensed under the terms of the GNU General Public License
+libsigrok is licensed under the terms of the GNU General Public License
 (GPL), version 3 or later.
 
 While some individual source code files are licensed under the GPLv2+, and
@@ -96,5 +108,4 @@ Website
 -------
 
  http://sigrok.org/wiki/Libsigrok
- http://dreamsourcelab.com
 

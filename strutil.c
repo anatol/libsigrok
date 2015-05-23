@@ -82,7 +82,7 @@ SR_API char *sr_si_string_u64(uint64_t x, const char *unit)
 		return g_strdup_printf("%" PRIu64 " k%s",
 				    x / SR_KHZ(1), unit);
 	} else if ((x >= SR_KHZ(1)) && (x % SR_KHZ(1) != 0)) {
-        return g_strdup_printf("%" PRIu64 ".%" PRIu64 " K%s",
+		return g_strdup_printf("%" PRIu64 ".%" PRIu64 " k%s",
 				    x / SR_KHZ(1), x % SR_KHZ(1), unit);
 	} else {
 		return g_strdup_printf("%" PRIu64 " %s", x, unit);

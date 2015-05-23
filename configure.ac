@@ -27,8 +27,8 @@ m4_define([sr_package_version_minor], [2])
 m4_define([sr_package_version_micro], [0])
 m4_define([sr_package_version], [sr_package_version_major.sr_package_version_minor.sr_package_version_micro])
 
-AC_INIT([libsigrok4DSL], [sr_package_version], [support@dreamsourcelab.com],
-	[libsigrok4DSL], [http://www.dreamsourcelab.com])
+AC_INIT([libsigrok], [sr_package_version], [sigrok-devel@lists.sourceforge.net],
+	[libsigrok], [http://www.sigrok.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([autostuff])
 AC_CONFIG_AUX_DIR([autostuff])
@@ -44,7 +44,7 @@ AH_BOTTOM([#endif /* SR_CONFIG_H */])
 
 # Enable more compiler warnings via -Wall and -Wextra. Add -fvisibility=hidden
 # and enforce use of SR_API to explicitly mark all public API functions.
-CFLAGS="$CFLAGS -Wall -Wextra -fvisibility=hidden -ludev -Wl,--rpath=/usr/local/lib"
+CFLAGS="$CFLAGS -Wall -Wextra -fvisibility=hidden"
 
 # Checks for programs.
 AC_PROG_CC
@@ -67,7 +67,7 @@ PKG_PROG_PKG_CONFIG([0.22])
 # The algorithm for determining which number to change (and how) is nontrivial!
 # http://www.gnu.org/software/libtool/manual/libtool.html#Updating-version-info
 SR_LIB_VERSION_CURRENT=1
-SR_LIB_VERSION_REVISION=2
+SR_LIB_VERSION_REVISION=0
 SR_LIB_VERSION_AGE=0
 SR_LIB_VERSION="$SR_LIB_VERSION_CURRENT:$SR_LIB_VERSION_REVISION:$SR_LIB_VERSION_AGE"
 SR_LIB_LDFLAGS="-version-info $SR_LIB_VERSION"
@@ -77,30 +77,119 @@ AC_SUBST(SR_LIB_VERSION_AGE)
 AC_SUBST(SR_LIB_VERSION)
 AC_SUBST(SR_LIB_LDFLAGS)
 
+# Hardware support '--enable' options.
+
 AC_ARG_ENABLE(all-drivers, AC_HELP_STRING([--enable-all-drivers],
-        [enable all drivers by default [default=yes]]),
-        [HW_ENABLED_DEFAULT="$enableval"],
-        [HW_ENABLED_DEFAULT="yes"])
+	[enable all drivers by default [default=yes]]),
+	[HW_ENABLED_DEFAULT="$enableval"],
+	[HW_ENABLED_DEFAULT="yes"])
+
+AC_ARG_ENABLE(agilent-dmm, AC_HELP_STRING([--enable-agilent-dmm],
+	[enable Agilent DMM support [default=yes]]),
+	[HW_AGILENT_DMM="$enableval"],
+	[HW_AGILENT_DMM=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa],
+	[enable ALSA driver support [default=yes]]),
+	[HW_ALSA="$enableval"],
+	[HW_ALSA=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(asix-sigma, AC_HELP_STRING([--enable-asix-sigma],
+	[enable ASIX SIGMA/SIGMA2 support [default=yes]]),
+	[LA_ASIX_SIGMA="$enableval"],
+	[LA_ASIX_SIGMA=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(brymen-dmm, AC_HELP_STRING([--enable-brymen-dmm],
+	[enable Brymen DMM support [default=yes]]),
+	[HW_BRYMEN_DMM="$enableval"],
+	[HW_BRYMEN_DMM=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(chronovu-la8, AC_HELP_STRING([--enable-chronovu-la8],
+	[enable ChronoVu LA8 support [default=yes]]),
+	[LA_CHRONOVU_LA8="$enableval"],
+	[LA_CHRONOVU_LA8=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(colead-slm, AC_HELP_STRING([--enable-colead-slm],
+	[enable Colead SLM support [default=yes]]),
+	[HW_COLEAD_SLM="$enableval"],
+	[HW_COLEAD_SLM=$HW_ENABLED_DEFAULT])
 
 AC_ARG_ENABLE(demo, AC_HELP_STRING([--enable-demo],
 	[enable demo driver support [default=yes]]),
-	[HW_DEMO="$enableval"],
-	[HW_DEMO=$HW_ENABLED_DEFAULT])
-AC_ARG_ENABLE(DSL, AC_HELP_STRING([--enable-DSL],
-        [enable DreamSourceLab hardware support [default=yes]]),
-        [HW_DSL="$enableval"],
-        [HW_DSL=$HW_ENABLED_DEFAULT])
-# Checks for libraries.
+	[LA_DEMO="$enableval"],
+	[LA_DEMO=$HW_ENABLED_DEFAULT])
 
-case "$host" in
-*mingw*)
-	# We need to link against the Winsock2 library for SCPI over TCP.
-	LIBS="$LIBS -lws2_32";;
-esac
+AC_ARG_ENABLE(dslogic, AC_HELP_STRING([--enable-dslogic],
+	[enable DSLogic support [default=yes]]),
+	[HW_DSLOGIC="$enableval"],
+	[HW_DSLOGIC=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(fluke-dmm, AC_HELP_STRING([--enable-fluke-dmm],
+	[enable Fluke DMM support [default=yes]]),
+	[HW_FLUKE_DMM="$enableval"],
+	[HW_FLUKE_DMM=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(fx2lafw, AC_HELP_STRING([--enable-fx2lafw],
+	[enable fx2lafw support (for FX2 LAs). [default=yes]]),
+	[LA_FX2LAFW="$enableval"],
+	[LA_FX2LAFW=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(hantek-dso, AC_HELP_STRING([--enable-hantek-dso],
+	[enable Hantek DSO support [default=yes]]),
+	[HW_HANTEK_DSO="$enableval"],
+	[HW_HANTEK_DSO=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(lascar-el-usb, AC_HELP_STRING([--enable-lascar-el-usb],
+	[enable Lascar EL-USB support [default=yes]]),
+	[HW_LASCAR_EL_USB="$enableval"],
+	[HW_LASCAR_EL_USB=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(mic-985xx, AC_HELP_STRING([--enable-mic-985xx],
+	[enable MIC 985xx support [default=yes]]),
+	[HW_MIC_985XX="$enableval"],
+	[HW_MIC_985XX=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(ols, AC_HELP_STRING([--enable-ols],
+	[enable OpenBench Logic Sniffer (OLS) support [default=yes]]),
+	[LA_OLS="$enableval"],
+	[LA_OLS=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(rigol-ds1xx2, AC_HELP_STRING([--enable-rigol-ds1xx2],
+	[enable Rigol DS1xx2 support [default=yes]]),
+	[HW_RIGOL_DS1XX2="$enableval"],
+	[HW_RIGOL_DS1XX2=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(serial-dmm, AC_HELP_STRING([--enable-serial-dmm],
+	[enable serial DMM support [default=yes]]),
+	[HW_SERIAL_DMM="$enableval"],
+	[HW_SERIAL_DMM=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(tondaj-sl-814, AC_HELP_STRING([--enable-tondaj-sl-814],
+	[enable Tondaj SL-814 support [default=yes]]),
+	[HW_TONDAJ_SL_814="$enableval"],
+	[HW_TONDAJ_SL_814=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(uni-t-dmm, AC_HELP_STRING([--enable-uni-t-dmm],
+	[enable UNI-T DMM support [default=yes]]),
+	[HW_UNI_T_DMM="$enableval"],
+	[HW_UNI_T_DMM=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(victor-dmm, AC_HELP_STRING([--enable-victor-dmm],
+	[enable victor-dmm support [default=yes]]),
+	[HW_VICTOR_DMM="$enableval"],
+	[HW_VICTOR_DMM=$HW_ENABLED_DEFAULT])
+
+AC_ARG_ENABLE(zeroplus-logic-cube,
+	AC_HELP_STRING([--enable-zeroplus-logic-cube],
+	[enable ZEROPLUS Logic Cube support [default=yes]]),
+	[LA_ZEROPLUS_LOGIC_CUBE="$enableval"],
+	[LA_ZEROPLUS_LOGIC_CUBE=$HW_ENABLED_DEFAULT])
+
+# Checks for libraries.
 
 # This variable collects the pkg-config names of all detected libs.
 # It is then used to construct the "Requires.private:" field in the
-# libsigrok4DSL.pc file.
+# libsigrok.pc file.
 SR_PKGLIBS=""
 
 # libm (the standard math library) is always needed.
@@ -113,7 +202,7 @@ AM_PATH_GLIB_2_0([2.32.0],
 	[CFLAGS="$CFLAGS $GLIB_CFLAGS"; LIBS="$LIBS $GLIB_LIBS"])
 
 # libzip is always needed. Abort if it's not found.
-PKG_CHECK_MODULES([libzip], [libzip >= 0.10],
+PKG_CHECK_MODULES([libzip], [libzip >= 0.8],
 	[CFLAGS="$CFLAGS $libzip_CFLAGS"; LIBS="$LIBS $libzip_LIBS";
 	SR_PKGLIBS="$SR_PKGLIBS libzip"])
 
@@ -149,7 +238,10 @@ case "$host" in
 		[have_libusb1_0="yes"; CFLAGS="$CFLAGS $libusb_CFLAGS";
 		LIBS="$LIBS $libusb_LIBS";
 		SR_PKGLIBS="$SR_PKGLIBS libusb-1.0"],
-		[have_libusb1_0="no"])
+		[have_libusb1_0="no"; LA_FX2LAFW="no"; HW_HANTEK_DSO="no";
+		HW_LASCAR_EL_USB="no"; HW_NEXUS_OSCIPRIME="no";
+		HW_UNI_T_DMM="no"; HW_VICTOR_DMM="no";
+		LA_ZEROPLUS_LOGIC_CUBE="no"])
 
 	# Define HAVE_LIBUSB_1_0 in config.h if we found libusb-1.0.
 	if test "x$have_libusb1_0" != "xno"; then
@@ -159,7 +251,21 @@ case "$host" in
 	;;
 esac
 
+# USB + FX2 firmware helper code is only compiled in if libusb-1.0 was found.
+AM_CONDITIONAL(NEED_USB, test "x$have_libusb1_0" != xno)
 
+# libftdi is only needed for some hardware drivers. Disable them if not found.
+PKG_CHECK_MODULES([libftdi], [libftdi >= 0.16],
+	[CFLAGS="$CFLAGS $libftdi_CFLAGS";
+	LIBS="$LIBS $libftdi_LIBS";
+	SR_PKGLIBS="$SR_PKGLIBS libftdi"],
+	[LA_ASIX_SIGMA="no"; LA_CHRONOVU_LA8="no"])
+
+# ALSA is only needed for some hardware drivers. Disable them if not found.
+PKG_CHECK_MODULES([alsa], [alsa >= 1.0],
+	[CFLAGS="$CFLAGS $alsa_CFLAGS"; LIBS="$LIBS $alsa_LIBS";
+	SR_PKGLIBS="$SR_PKGLIBS alsa"],
+	[HW_ALSA="no"])
 
 # The Check unit testing framework is optional. Disable if not found.
 PKG_CHECK_MODULES([check], [check >= 0.9.4],
@@ -167,24 +273,123 @@ PKG_CHECK_MODULES([check], [check >= 0.9.4],
 	LIBS="$LIBS $check_LIBS"], [have_check="no"])
 AM_CONDITIONAL(HAVE_CHECK, test x"$have_check" = "xyes")
 
-# The OLS driver uses serial port file descriptors directly, and therefore
-# will not currently work on Windows.
-
+# The Rigol DS1xx2 driver currently uses the Linux kernel usbtmc module
+# (though it is planned to rewrite the driver to be portable later).
+# Thus, it will be disabled for non-Linux builds for now.
+case "$host" in
+*linux*)
+	# Do nothing. Whether the driver is enabled is determined by the
+	# previous --enable-all-drivers/--disable-all-drivers and/or any
+	# --enable-rigol-ds1xx2/--disable-rigol-ds1xx2 options.
+	;;
+*)
+	# Disable the driver for builds that don't target Linux.
+	HW_RIGOL_DS1XX2="no"
+	;;
+esac
 
 AC_SUBST(SR_PKGLIBS)
 
 # Now set AM_CONDITIONALs and AC_DEFINEs for the enabled/disabled drivers.
 
+AM_CONDITIONAL(HW_AGILENT_DMM, test x$HW_AGILENT_DMM = xyes)
+if test "x$HW_AGILENT_DMM" = "xyes"; then
+	AC_DEFINE(HAVE_HW_AGILENT_DMM, 1, [Agilent DMM support])
+fi
 
+AM_CONDITIONAL(HW_ALSA, test x$HW_ALSA = xyes)
+if test "x$HW_ALSA" = "xyes"; then
+	AC_DEFINE(HAVE_HW_ALSA, 1, [ALSA driver support])
+fi
 
-AM_CONDITIONAL(HW_DEMO, test x$HW_DEMO = xyes)
-if test "x$HW_DEMO" = "xyes"; then
+AM_CONDITIONAL(LA_ASIX_SIGMA, test x$LA_ASIX_SIGMA = xyes)
+if test "x$LA_ASIX_SIGMA" = "xyes"; then
+	AC_DEFINE(HAVE_LA_ASIX_SIGMA, 1, [ASIX SIGMA/SIGMA2 support])
+fi
+
+AM_CONDITIONAL(HW_BRYMEN_DMM, test x$HW_BRYMEN_DMM = xyes)
+if test "x$HW_BRYMEN_DMM" = "xyes"; then
+	AC_DEFINE(HAVE_HW_BRYMEN_DMM, 1, [Brymen DMM support])
+fi
+
+AM_CONDITIONAL(LA_CHRONOVU_LA8, test x$LA_CHRONOVU_LA8 = xyes)
+if test "x$LA_CHRONOVU_LA8" = "xyes"; then
+	AC_DEFINE(HAVE_LA_CHRONOVU_LA8, 1, [ChronoVu LA8 support])
+fi
+
+AM_CONDITIONAL(HW_COLEAD_SLM, test x$HW_COLEAD_SLM = xyes)
+if test "x$HW_COLEAD_SLM" = "xyes"; then
+	AC_DEFINE(HAVE_HW_COLEAD_SLM, 1, [Colead SLM support])
+fi
+
+AM_CONDITIONAL(LA_DEMO, test x$LA_DEMO = xyes)
+if test "x$LA_DEMO" = "xyes"; then
 	AC_DEFINE(HAVE_LA_DEMO, 1, [Demo driver support])
 fi
 
-AM_CONDITIONAL(HW_DSL, test x$HW_DSL = xyes)
-if test "x$HW_DSL" = "xyes"; then
-	AC_DEFINE(HAVE_DSL_DEVICE, 1, [DreamSourceLab hardware driver support])
+AM_CONDITIONAL(HW_DSLOGIC, test x$HW_DSLOGIC = xyes)
+if test "x$HW_DSLOGIC" = "xyes"; then
+	AC_DEFINE(HAVE_HW_DSLOGIC, 1, [DSLogic support])
+fi
+
+AM_CONDITIONAL(HW_FLUKE_DMM, test x$HW_FLUKE_DMM = xyes)
+if test "x$HW_FLUKE_DMM" = "xyes"; then
+	AC_DEFINE(HAVE_HW_FLUKE_DMM, 1, [Fluke DMM support])
+fi
+
+AM_CONDITIONAL(LA_FX2LAFW, test x$LA_FX2LAFW = xyes)
+if test "x$LA_FX2LAFW" = "xyes"; then
+	AC_DEFINE(HAVE_LA_FX2LAFW, 1, [fx2lafw support])
+fi
+
+AM_CONDITIONAL(HW_HANTEK_DSO, test x$HW_HANTEK_DSO = xyes)
+if test "x$HW_HANTEK_DSO" = "xyes"; then
+	AC_DEFINE(HAVE_HW_HANTEK_DSO, 1, [Hantek DSO support])
+fi
+
+AM_CONDITIONAL(HW_LASCAR_EL_USB, test x$HW_LASCAR_EL_USB = xyes)
+if test "x$HW_LASCAR_EL_USB" = "xyes"; then
+	AC_DEFINE(HAVE_HW_LASCAR_EL_USB, 1, [Lascar EL-USB support])
+fi
+
+AM_CONDITIONAL(HW_MIC_985XX, test x$HW_MIC_985XX = xyes)
+if test "x$HW_MIC_985XX" = "xyes"; then
+	AC_DEFINE(HAVE_HW_MIC_985XX, 1, [MIC 985xx support])
+fi
+
+AM_CONDITIONAL(LA_OLS, test x$LA_OLS = xyes)
+if test "x$LA_OLS" = "xyes"; then
+	AC_DEFINE(HAVE_LA_OLS, 1, [OpenBench Logic Sniffer (OLS) support])
+fi
+
+AM_CONDITIONAL(HW_RIGOL_DS1XX2, test x$HW_RIGOL_DS1XX2 = xyes)
+if test "x$HW_RIGOL_DS1XX2" = "xyes"; then
+	AC_DEFINE(HAVE_HW_RIGOL_DS1XX2, 1, [Rigol DS1xx2 support])
+fi
+
+AM_CONDITIONAL(HW_SERIAL_DMM, test x$HW_SERIAL_DMM = xyes)
+if test "x$HW_SERIAL_DMM" = "xyes"; then
+	AC_DEFINE(HAVE_HW_SERIAL_DMM, 1, [Serial DMM support])
+fi
+
+AM_CONDITIONAL(HW_TONDAJ_SL_814, test x$HW_TONDAJ_SL_814 = xyes)
+if test "x$HW_TONDAJ_SL_814" = "xyes"; then
+	AC_DEFINE(HAVE_HW_TONDAJ_SL_814, 1, [Tondaj SL-814 support])
+fi
+
+AM_CONDITIONAL(HW_UNI_T_DMM, test x$HW_UNI_T_DMM = xyes)
+if test "x$HW_UNI_T_DMM" = "xyes"; then
+	AC_DEFINE(HAVE_HW_UNI_T_DMM, 1, [UNI-T DMM support])
+fi
+
+AM_CONDITIONAL(HW_VICTOR_DMM, test x$HW_VICTOR_DMM = xyes)
+if test "x$HW_VICTOR_DMM" = "xyes"; then
+	AC_DEFINE(HAVE_HW_VICTOR_DMM, 1, [Victor DMM support])
+fi
+
+AM_CONDITIONAL(LA_ZEROPLUS_LOGIC_CUBE, test x$LA_ZEROPLUS_LOGIC_CUBE = xyes)
+if test "x$LA_ZEROPLUS_LOGIC_CUBE" = "xyes"; then
+	AC_DEFINE(HAVE_LA_ZEROPLUS_LOGIC_CUBE, 1, [ZEROPLUS Logic Cube support])
 fi
 
 # Checks for header files.
@@ -222,12 +427,33 @@ AC_SUBST(SR_PACKAGE_VERSION_MICRO)
 AC_SUBST(SR_PACKAGE_VERSION)
 
 AC_CONFIG_FILES([Makefile version.h hardware/Makefile
-		 hardware/demo/Makefile
+		 hardware/agilent-dmm/Makefile
+		 hardware/alsa/Makefile
+		 hardware/asix-sigma/Makefile
+		 hardware/brymen-dmm/Makefile
+		 hardware/chronovu-la8/Makefile
+		 hardware/colead-slm/Makefile
 		 hardware/common/Makefile
-		 hardware/DSL/Makefile
+		 hardware/lascar-el-usb/Makefile
+		 hardware/mic-985xx/Makefile
+		 hardware/rigol-ds1xx2/Makefile
+		 hardware/tondaj-sl-814/Makefile
+		 hardware/victor-dmm/Makefile
+		 hardware/common/dmm/Makefile
+		 hardware/demo/Makefile
+		 hardware/dslogic/Makefile
+		 hardware/fluke-dmm/Makefile
+		 hardware/fx2lafw/Makefile
+		 hardware/hantek-dso/Makefile
+		 hardware/openbench-logic-sniffer/Makefile
+		 hardware/serial-dmm/Makefile
+		 hardware/uni-t-dmm/Makefile
+		 hardware/zeroplus-logic-cube/Makefile
 		 input/Makefile
 		 output/Makefile
-		 libsigrok4DSL.pc
+		 output/text/Makefile
+		 libsigrok.pc
+		 contrib/Makefile
 		 tests/Makefile
 		])
 
@@ -246,7 +472,7 @@ echo "Detected libraries:"
 echo
 
 # Note: This only works for libs with pkg-config integration.
-for lib in "glib-2.0 >= 2.32.0" "libzip >= 0.10" "libserialport >= 0.1.0" "libusb-1.0 >= 1.0.9" "libftdi >= 0.16" "libudev >= 151" "alsa >= 1.0" "check >= 0.9.4"; do
+for lib in "glib-2.0 >= 2.32.0" "libzip >= 0.8" "libserialport >= 0.1.0" "libusb-1.0 >= 1.0.9" "libftdi >= 0.16" "libudev >= 151" "alsa >= 1.0" "check >= 0.9.4"; do
 	if `$PKG_CONFIG --exists $lib`; then
 		ver=`$PKG_CONFIG --modversion $lib`
 		answer="yes ($ver)"
@@ -257,7 +483,25 @@ for lib in "glib-2.0 >= 2.32.0" "libzip >= 0.10" "libserialport >= 0.1.0" "libus
 done
 
 echo -e "\nEnabled hardware drivers:\n"
-echo "  - demo............................ $HW_DEMO"
-echo "  - DreamSourceLab.................. $HW_DSL"
+echo "  - agilent-dmm..................... $HW_AGILENT_DMM"
+echo "  - alsa............................ $HW_ALSA"
+echo "  - asix-sigma...................... $LA_ASIX_SIGMA"
+echo "  - brymen-dmm...................... $HW_BRYMEN_DMM"
+echo "  - chronovu-la8.................... $LA_CHRONOVU_LA8"
+echo "  - colead-slm...................... $HW_COLEAD_SLM"
+echo "  - demo............................ $LA_DEMO"
+echo "  - dslogic......................... $HW_DSLOGIC"
+echo "  - fluke-dmm....................... $HW_FLUKE_DMM"
+echo "  - fx2lafw......................... $LA_FX2LAFW"
+echo "  - hantek-dso...................... $HW_HANTEK_DSO"
+echo "  - lascar-el-usb................... $HW_LASCAR_EL_USB"
+echo "  - mic-985xx....................... $HW_MIC_985XX"
+echo "  - openbench-logic-sniffer......... $LA_OLS"
+echo "  - rigol-ds1xx2.................... $HW_RIGOL_DS1XX2"
+echo "  - serial-dmm...................... $HW_SERIAL_DMM"
+echo "  - tondaj-sl-814................... $HW_TONDAJ_SL_814"
+echo "  - uni-t-dmm....................... $HW_UNI_T_DMM"
+echo "  - victor-dmm...................... $HW_VICTOR_DMM"
+echo "  - zeroplus-logic-cube............. $LA_ZEROPLUS_LOGIC_CUBE"
 echo
 

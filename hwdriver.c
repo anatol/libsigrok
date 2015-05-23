@@ -99,6 +99,12 @@ static struct sr_config_info sr_config_info_data[] = {
 };
 
 /** @cond PRIVATE */
+#ifdef HAVE_HW_BRYMEN_DMM
+extern SR_PRIV struct sr_dev_driver brymen_bm857_driver_info;
+#endif
+#ifdef HAVE_HW_COLEAD_SLM
+extern SR_PRIV struct sr_dev_driver colead_slm_driver_info;
+#endif
 #ifdef HAVE_LA_DEMO
 extern SR_PRIV struct sr_dev_driver demo_driver_info;
 #endif
@@ -106,15 +112,163 @@ extern SR_PRIV struct sr_dev_driver demo_driver_info;
 extern SR_PRIV struct sr_dev_driver DSLogic_driver_info;
 extern SR_PRIV struct sr_dev_driver DSCope_driver_info;
 #endif
+#ifdef HAVE_HW_LASCAR_EL_USB
+extern SR_PRIV struct sr_dev_driver lascar_el_usb_driver_info;
+#endif
+#ifdef HAVE_HW_MIC_985XX
+extern SR_PRIV struct sr_dev_driver mic_98581_driver_info;
+extern SR_PRIV struct sr_dev_driver mic_98583_driver_info;
+#endif
+#ifdef HAVE_LA_OLS
+extern SR_PRIV struct sr_dev_driver ols_driver_info;
+#endif
+#ifdef HAVE_HW_RIGOL_DS1XX2
+extern SR_PRIV struct sr_dev_driver rigol_ds1xx2_driver_info;
+#endif
+#ifdef HAVE_HW_TONDAJ_SL_814
+extern SR_PRIV struct sr_dev_driver tondaj_sl_814_driver_info;
+#endif
+#ifdef HAVE_HW_VICTOR_DMM
+extern SR_PRIV struct sr_dev_driver victor_dmm_driver_info;
+#endif
+#ifdef HAVE_LA_ZEROPLUS_LOGIC_CUBE
+extern SR_PRIV struct sr_dev_driver zeroplus_logic_cube_driver_info;
+#endif
+#ifdef HAVE_LA_ASIX_SIGMA
+extern SR_PRIV struct sr_dev_driver asix_sigma_driver_info;
+#endif
+#ifdef HAVE_LA_CHRONOVU_LA8
+extern SR_PRIV struct sr_dev_driver chronovu_la8_driver_info;
+#endif
+#ifdef HAVE_HW_ALSA
+extern SR_PRIV struct sr_dev_driver alsa_driver_info;
+#endif
+#ifdef HAVE_LA_FX2LAFW
+extern SR_PRIV struct sr_dev_driver fx2lafw_driver_info;
+#endif
+#ifdef HAVE_HW_HANTEK_DSO
+extern SR_PRIV struct sr_dev_driver hantek_dso_driver_info;
+#endif
+#ifdef HAVE_HW_AGILENT_DMM
+extern SR_PRIV struct sr_dev_driver agdmm_driver_info;
+#endif
+#ifdef HAVE_HW_FLUKE_DMM
+extern SR_PRIV struct sr_dev_driver flukedmm_driver_info;
+#endif
+#ifdef HAVE_HW_SERIAL_DMM
+extern SR_PRIV struct sr_dev_driver digitek_dt4000zc_driver_info;
+extern SR_PRIV struct sr_dev_driver tekpower_tp4000zc_driver_info;
+extern SR_PRIV struct sr_dev_driver metex_me31_driver_info;
+extern SR_PRIV struct sr_dev_driver peaktech_3410_driver_info;
+extern SR_PRIV struct sr_dev_driver mastech_mas345_driver_info;
+extern SR_PRIV struct sr_dev_driver va_va18b_driver_info;
+extern SR_PRIV struct sr_dev_driver metex_m3640d_driver_info;
+extern SR_PRIV struct sr_dev_driver peaktech_4370_driver_info;
+extern SR_PRIV struct sr_dev_driver pce_pce_dm32_driver_info;
+extern SR_PRIV struct sr_dev_driver radioshack_22_168_driver_info;
+extern SR_PRIV struct sr_dev_driver radioshack_22_805_driver_info;
+extern SR_PRIV struct sr_dev_driver radioshack_22_812_driver_info;
+extern SR_PRIV struct sr_dev_driver tecpel_dmm_8060_ser_driver_info;
+extern SR_PRIV struct sr_dev_driver tecpel_dmm_8061_ser_driver_info;
+extern SR_PRIV struct sr_dev_driver voltcraft_vc820_ser_driver_info;
+extern SR_PRIV struct sr_dev_driver voltcraft_vc840_ser_driver_info;
+extern SR_PRIV struct sr_dev_driver uni_t_ut61d_ser_driver_info;
+extern SR_PRIV struct sr_dev_driver uni_t_ut61e_ser_driver_info;
+#endif
+#ifdef HAVE_HW_UNI_T_DMM
+extern SR_PRIV struct sr_dev_driver tecpel_dmm_8060_driver_info;
+extern SR_PRIV struct sr_dev_driver tecpel_dmm_8061_driver_info;
+extern SR_PRIV struct sr_dev_driver uni_t_ut61d_driver_info;
+extern SR_PRIV struct sr_dev_driver uni_t_ut61e_driver_info;
+extern SR_PRIV struct sr_dev_driver voltcraft_vc820_driver_info;
+extern SR_PRIV struct sr_dev_driver voltcraft_vc840_driver_info;
+#endif
 /** @endcond */
 
 static struct sr_dev_driver *drivers_list[] = {
+#ifdef HAVE_HW_BRYMEN_DMM
+	&brymen_bm857_driver_info,
+#endif
+#ifdef HAVE_HW_COLEAD_SLM
+	&colead_slm_driver_info,
+#endif
 #ifdef HAVE_LA_DEMO
 	&demo_driver_info,
 #endif
 #ifdef HAVE_DSL_DEVICE
     &DSLogic_driver_info,
     &DSCope_driver_info,
+#endif
+#ifdef HAVE_HW_LASCAR_EL_USB
+	&lascar_el_usb_driver_info,
+#endif
+#ifdef HAVE_HW_MIC_985XX
+	&mic_98581_driver_info,
+	&mic_98583_driver_info,
+#endif
+#ifdef HAVE_LA_OLS
+	&ols_driver_info,
+#endif
+#ifdef HAVE_HW_RIGOL_DS1XX2
+	&rigol_ds1xx2_driver_info,
+#endif
+#ifdef HAVE_HW_TONDAJ_SL_814
+	&tondaj_sl_814_driver_info,
+#endif
+#ifdef HAVE_HW_VICTOR_DMM
+	&victor_dmm_driver_info,
+#endif
+#ifdef HAVE_LA_ZEROPLUS_LOGIC_CUBE
+	&zeroplus_logic_cube_driver_info,
+#endif
+#ifdef HAVE_LA_ASIX_SIGMA
+	&asix_sigma_driver_info,
+#endif
+#ifdef HAVE_LA_CHRONOVU_LA8
+	&chronovu_la8_driver_info,
+#endif
+#ifdef HAVE_HW_ALSA
+	&alsa_driver_info,
+#endif
+#ifdef HAVE_LA_FX2LAFW
+	&fx2lafw_driver_info,
+#endif
+#ifdef HAVE_HW_HANTEK_DSO
+	&hantek_dso_driver_info,
+#endif
+#ifdef HAVE_HW_AGILENT_DMM
+	&agdmm_driver_info,
+#endif
+#ifdef HAVE_HW_FLUKE_DMM
+	&flukedmm_driver_info,
+#endif
+#ifdef HAVE_HW_SERIAL_DMM
+	&digitek_dt4000zc_driver_info,
+	&tekpower_tp4000zc_driver_info,
+	&metex_me31_driver_info,
+	&peaktech_3410_driver_info,
+	&mastech_mas345_driver_info,
+	&va_va18b_driver_info,
+	&metex_m3640d_driver_info,
+	&peaktech_4370_driver_info,
+	&pce_pce_dm32_driver_info,
+	&radioshack_22_168_driver_info,
+	&radioshack_22_805_driver_info,
+	&radioshack_22_812_driver_info,
+	&tecpel_dmm_8060_ser_driver_info,
+	&tecpel_dmm_8061_ser_driver_info,
+	&voltcraft_vc820_ser_driver_info,
+	&voltcraft_vc840_ser_driver_info,
+	&uni_t_ut61d_ser_driver_info,
+	&uni_t_ut61e_ser_driver_info,
+#endif
+#ifdef HAVE_HW_UNI_T_DMM
+	&tecpel_dmm_8060_driver_info,
+	&tecpel_dmm_8061_driver_info,
+	&uni_t_ut61d_driver_info,
+	&uni_t_ut61e_driver_info,
+	&voltcraft_vc820_driver_info,
+	&voltcraft_vc840_driver_info,
 #endif
 	NULL,
 };
@@ -284,7 +438,7 @@ SR_API int sr_config_get(const struct sr_dev_driver *driver,
 	if (!driver->config_get)
 		return SR_ERR_ARG;
 
-    if ((ret = driver->config_get(key, data, sdi, ch, cg)) == SR_OK) {
+	if ((ret = driver->config_get(key, data, sdi, ch, cg)) == SR_OK) {
 		/* Got a floating reference from the driver. Sink it here,
 		 * caller will need to unref when done with it. */
 		g_variant_ref_sink(*data);
@@ -321,7 +475,7 @@ SR_API int sr_config_set(const struct sr_dev_inst *sdi,
 	else if (!sdi->driver->config_set)
 		ret = SR_ERR_ARG;
 	else
-        ret = sdi->driver->config_set(key, data, sdi, ch, cg);
+	ret = sdi->driver->config_set(key, data, sdi, ch, cg);
 
 	g_variant_unref(data);
 
@@ -357,7 +511,7 @@ SR_API int sr_config_list(const struct sr_dev_driver *driver,
 		ret = SR_ERR;
 	else if (!driver->config_list)
 		ret = SR_ERR_ARG;
-    else if ((ret = driver->config_list(key, data, sdi, cg)) == SR_OK)
+	else if ((ret = driver->config_list(key, data, sdi, cg)) == SR_OK)
 		g_variant_ref_sink(*data);
 
 	return ret;
@@ -420,14 +574,14 @@ SR_API int sr_status_get(const struct sr_dev_inst *sdi,
  */
 SR_API const struct sr_config_info *sr_config_info_name_get(const char *optname)
 {
-    int i;
+	int i;
 
-    for (i = 0; sr_config_info_data[i].key; i++) {
-        if (!strcmp(sr_config_info_data[i].id, optname))
-            return &sr_config_info_data[i];
-    }
+	for (i = 0; sr_config_info_data[i].key; i++) {
+		if (!strcmp(sr_config_info_data[i].id, optname))
+			return &sr_config_info_data[i];
+	}
 
-    return NULL;
+	return NULL;
 }
 
 /* Unnecessary level of indirection follows. */
@@ -442,7 +596,7 @@ SR_PRIV int sr_source_remove(int fd)
 SR_PRIV int sr_source_add(int fd, int events, int timeout,
 			  sr_receive_data_callback_t cb, void *cb_data)
 {
-    return sr_session_source_add(fd, events, timeout, cb, cb_data);
+	return sr_session_source_add(fd, events, timeout, cb, cb_data);
 }
 
 /** @} */

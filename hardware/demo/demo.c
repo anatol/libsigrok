@@ -96,13 +96,13 @@ struct dev_context {
 	uint64_t samples_counter;
 	void *cb_data;
 	int64_t starttime;
-    int stop;
-    uint64_t timebase;
+	int stop;
+	uint64_t timebase;
 
-    int trigger_stage;
-    uint16_t trigger_mask;
-    uint16_t trigger_value;
-    uint16_t trigger_edge;
+	int trigger_stage;
+	uint16_t trigger_mask;
+	uint16_t trigger_value;
+	uint16_t trigger_edge;
 };
 
 static const int hwcaps[] = {

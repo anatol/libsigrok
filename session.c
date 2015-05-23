@@ -84,7 +84,7 @@ SR_API struct sr_session *sr_session_new(void)
 	}
 
 	session->source_timeout = -1;
-    session->running = FALSE;
+	session->running = FALSE;
 	session->abort_session = FALSE;
 //	g_mutex_init(&session->stop_mutex);
 
@@ -362,7 +362,7 @@ SR_API int sr_session_start(void)
 		return SR_ERR_BUG;
 	}
 
-	sr_info("Starting...");
+	sr_info("Starting.");
 
 	ret = SR_OK;
 	for (l = session->devs; l; l = l->next) {
@@ -401,7 +401,7 @@ SR_API int sr_session_run(void)
 
     session->running = TRUE;
 
-	sr_info("Running...");
+	sr_info("Running.");
 
 	/* Do we have real sources? */
 	if (session->num_sources == 1 && session->pollfds[0].fd == -1) {

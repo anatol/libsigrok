@@ -17,19 +17,25 @@
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-# Local lib, this is NOT meant to be installed!
-noinst_LTLIBRARIES = libsigrok4DSLoutput.la
+SUBDIRS = text
 
-libsigrok4DSLoutput_la_SOURCES = \
-        output.c \
-	csv.c \
+# Local lib, this is NOT meant to be installed!
+noinst_LTLIBRARIES = libsigrokoutput.la
+
+libsigrokoutput_la_SOURCES = \
+	binary.c \
 	vcd.c \
+	ols.c \
 	gnuplot.c \
+	chronovu_la8.c \
+	csv.c \
+	analog.c \
+	output.c \
 	srzip.c
 
-libsigrok4DSLoutput_la_CFLAGS = \
+libsigrokoutput_la_CFLAGS = \
 	-I$(top_srcdir)
 
-#libsigrok4DSLogicoutput_la_LIBADD = \
-#	text/libsigrok4DSLogicoutputtext.la
+libsigrokoutput_la_LIBADD = \
+	text/libsigrokoutputtext.la
 
